@@ -1,42 +1,39 @@
 # 🎬 Movie Manager
 
-Um gerenciador de filmes desenvolvido em Python que consome uma API REST para pesquisar filmes e permite salvar seus favoritos em um banco de dados SQLite.
+A command-line application developed in Python to search for movie information using the OMDb API.
 
-O projeto tem como objetivo praticar conceitos importantes de desenvolvimento de software, como Programação Orientada a Objetos, arquitetura em camadas, consumo de APIs, persistência de dados e testes automatizados.
-
----
-
-## ✨ Funcionalidades
-
-- Pesquisar filmes por título
-- Visualizar informações detalhadas
-- Salvar filmes favoritos
-- Listar filmes favoritos
-- Remover filmes favoritos
-- Avaliar filmes salvos
-- Persistência utilizando SQLite
+This project was created to practice object-oriented programming, layered architecture, REST API consumption, environment variables and automated testing.
 
 ---
 
-## 🛠 Tecnologias
+## Features
+
+- Search movies by title
+- Display movie information
+- Consume data from the OMDb API
+- Handle invalid titles
+- Handle connection errors
+
+---
+
+## Technologies
 
 - Python 3
-- SQLite
 - Requests
+- python-dotenv
 - Pytest
 
 ---
 
-## 📁 Estrutura do projeto
+## Project structure
 
 ```text
 movie-manager-python/
 │
 ├── clients/
-├── database/
 ├── models/
-├── repositories/
 ├── services/
+├── utils/
 ├── tests/
 │
 ├── main.py
@@ -48,59 +45,51 @@ movie-manager-python/
 
 ---
 
-## 🏗 Arquitetura
+## Architecture
 
-O projeto utiliza uma arquitetura em camadas.
-
-```
-Usuário
-    │
-    ▼
+```text
+User
+ │
+ ▼
 main.py
-    │
-    ▼
+ │
+ ▼
 MovieService
-    │
-    ├────────────► MovieApiClient
-    │
-    ▼
-MovieRepository
-    │
-    ▼
-SQLite
+ │
+ ▼
+MovieApiClient
+ │
+ ▼
+OMDb API
+ │
+ ▼
+Movie
 ```
 
-Cada camada possui uma responsabilidade específica.
+### Responsibilities
 
-- **main.py**: interação com o usuário.
-- **Service**: regras de negócio.
-- **Repository**: acesso ao banco de dados.
-- **API Client**: comunicação com a API de filmes.
-- **Model**: representação dos objetos.
+- **main.py** → user interaction
+- **MovieService** → business rules
+- **MovieApiClient** → communication with the OMDb API
+- **Movie** → movie representation
 
 ---
 
-## 🚀 Como executar
+## Installation
 
-Clone o repositório:
+Clone the repository:
 
 ```bash
 git clone https://github.com/eduardo-saiter/movie-manager-python.git
 ```
 
-Entre na pasta:
-
-```bash
-cd movie-manager-python
-```
-
-Crie um ambiente virtual:
+Create a virtual environment:
 
 ```bash
 python3 -m venv .venv
 ```
 
-Ative o ambiente:
+Activate it:
 
 Linux/macOS
 
@@ -111,16 +100,22 @@ source .venv/bin/activate
 Windows
 
 ```powershell
-.venv\Scripts\Activate.ps1
+.venv\Scripts\activate
 ```
 
-Instale as dependências:
+Install the dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Execute:
+Create a `.env` file in the project root:
+
+```text
+OMDB_API_KEY=your_api_key
+```
+
+Run the application:
 
 ```bash
 python main.py
@@ -128,15 +123,15 @@ python main.py
 
 ---
 
-## 🧪 Testes
+## Tests
 
-Instale as dependências de desenvolvimento:
+Install development dependencies:
 
 ```bash
 pip install -r requirements-dev.txt
 ```
 
-Execute todos os testes:
+Run:
 
 ```bash
 pytest
@@ -144,20 +139,18 @@ pytest
 
 ---
 
-## 📈 Roadmap
+## Roadmap
 
-- [ ] Buscar filmes por título
-- [ ] Consumir API REST
-- [ ] Salvar favoritos
-- [ ] Sistema de avaliações
-- [ ] Pesquisa por gênero
-- [ ] Pesquisa por ator
-- [ ] Histórico de pesquisas
-- [ ] Cobertura completa de testes
-- [ ] Interface gráfica ou Web
+- [x] Search movies by title
+- [x] Consume REST API
+- [ ] SQLite persistence
+- [ ] Favorite movies
+- [ ] Movie ratings
+- [ ] Search history
+- [ ] Complete automated test coverage
 
 ---
 
-## 📄 Licença
+## License
 
-Este projeto está licenciado sob a licença MIT.
+This project is licensed under the MIT License.
