@@ -2,6 +2,7 @@ from utils.exhibition import (
     menu,
     show_movie
 )
+
 from services.movie_services import MovieServices
 from clients.movie_api_client import MovieApiClient
 import requests
@@ -22,15 +23,16 @@ def main() -> None:
             try:
 
                 if option == "1":
+
+                    user_search = input("> ").strip()
+
                     try:
-                        user_search = input("> ").strip()
                         movie = service.search_movie(user_search)
                         print("Resultado da busca: ")
                         show_movie(movie)
                         
-                    except ValueError as e:
-                        print(e)
-
+                    except (ValueError,ConnectionError) as e:
+                        print(f"\n{e}")
 
                 elif option == "2":
                     print("Saindo do sistema...")
@@ -45,7 +47,7 @@ def main() -> None:
 
 
     except KeyboardInterrupt:
-        print("Programa interrompido pelo usuário.")
+        print("\nPrograma interrompido pelo usuário.")
 
 
 if __name__ == '__main__':

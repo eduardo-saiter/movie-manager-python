@@ -1,6 +1,6 @@
 
 def menu() -> None:
-    print("=== Movie Manager ===")
+    print("\n=== Movie Manager ===")
     print("1. Search movie")
     print("2. Exit")
 

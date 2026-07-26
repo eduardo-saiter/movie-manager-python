@@ -11,22 +11,33 @@ class MovieServices:
         self.api_client = api_client
 
 
-    def search_movie(self, user_search: str) -> Movie | None:
+    def search_movie(self, user_search: str) -> Movie:
 
         if not user_search:
-            raise ValueError("O título não pode ficar vazio")
+            raise ValueError("O título não pode ser vazio.")
 
         try:
             data = self.api_client.search_api(user_search)
+
         except requests.RequestException as error:
             raise ConnectionError(
-                "Não foi possível acessar a API."
+                "Ocorreu um erro durante a comunicação com a API."
+            ) from error
+        
+        except requests.ConnectionError as error:
+            raise ConnectionError(
+                "Não foi possível acessar a API, verifique sua internet."
+            ) from error
+        
+        except requests.Timeout as error:
+            raise ConnectionError(
+                "A API demorou demais para responder."
             ) from error
 
         if data.get("Response") == "False":
             raise ValueError(
-                data.get("Error", "Filme não encontrado")
-            )
+                "Filme não encontrado"
+                )
 
         return Movie(
             title=data["Title"],
