@@ -19,14 +19,16 @@ class MovieApiClient:
         self.base_url = "https://www.omdbapi.com/"
 
     def search_api(self, user_search: str) -> dict:
-        try:
             params = {
                 "apikey": self.api_key,
                 "t": user_search
             }
-            # timeout = desconecta se demorar
-            response = requests.get(self.base_url, params=params, timeout=10)
+
+            response = requests.get(
+            self.base_url, 
+            params=params, 
+            timeout=10
+            )
+            
             response.raise_for_status()
             return response.json()
-        except requests.Timeout:
-            raise ("A API demorou demais para responder.")

@@ -19,9 +19,9 @@ class MovieServices:
         try:
             data = self.api_client.search_api(user_search)
 
-        except requests.RequestException as error:
+        except requests.Timeout as error:
             raise ConnectionError(
-                "Ocorreu um erro durante a comunicação com a API."
+                "A API demorou demais para responder."
             ) from error
         
         except requests.ConnectionError as error:
@@ -29,9 +29,9 @@ class MovieServices:
                 "Não foi possível acessar a API, verifique sua internet."
             ) from error
         
-        except requests.Timeout as error:
+        except requests.RequestException as error:
             raise ConnectionError(
-                "A API demorou demais para responder."
+                "Ocorreu um erro durante a comunicação com a API."
             ) from error
 
         if data.get("Response") == "False":
