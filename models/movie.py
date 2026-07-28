@@ -8,3 +8,4 @@ class Movie:
     director: str
     plot: str
     id: int | None = None
+    avaliation: int | None = None

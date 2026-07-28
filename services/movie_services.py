@@ -44,5 +44,5 @@ class MovieServices:
             year=data["Year"],
             genre=data["Genre"],
             director=data["Director"],
-            plot=data["Plot"]
+            plot=data["Plot"],
         )
