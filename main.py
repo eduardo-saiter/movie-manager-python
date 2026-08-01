@@ -24,8 +24,8 @@ def main() -> None:
         initialize_database(conn)
 
         api_client = MovieApiClient()
-        service = MovieServices(api_client)
         repository = MovieRepository(conn)
+        service = MovieServices(api_client,repository)
 
         while True:
 
@@ -36,21 +36,60 @@ def main() -> None:
             try:
 
                 if option == "1":
-
+                    print("\nQual é o nome do filme?")
                     user_search = input("> ").strip()
 
                     try:
                         movie = service.search_movie(user_search)
-                        print("Resultado da busca: ")
-                        show_movie(movie)
-                        conf = input("\nDeseja salvar esse filme? > ").strip()
-                        if conf.lower() in ("s","sim"):
-                            repository.save_movie(movie)
+                        if movie.id is None:
+                            print("\nProcurando título na internet...")
+                            print("Resultado da busca: ")
+                            service.details_movie(movie)
+                            service.save_movie(movie)
+
+                        else:
+                            print("Resultado da busca: ")
+                            service.details_movie(movie)
                         
                     except (ValueError,ConnectionError) as e:
                         print(f"\n{e}")
 
+
                 elif option == "2":
+                    service.list_saved_movies()
+
+                elif option == "3":
+                    try:
+                        print("\nQual o nome do filme?")
+                        user_search = input("> ")
+                        movie = service.search_movie(user_search)
+                        if movie is not None:
+                            print("\nDigite sua nova review (0-5):")
+                            user_review = input(">")
+                            service.new_review_movie(user_review,movie)
+                    except ValueError as e:
+                        print(e)
+                elif option == "4":
+                    try:
+                        print("\nQual o nome do filme?")
+                        user_search = input("> ")
+                        movie = service.search_movie(user_search)
+                        if movie is not None:
+                            print("\nDigite seu novo comentário:")
+                            user_comment = input(">")
+                            service.new_comment_movie(user_comment,movie)
+                    except ValueError as e:
+                        print(e)
+
+                elif option == "5":
+                    try:
+                        print("\nQual o nome do filme?")
+                        user_search = input("> ")
+                        service.delete_saved_movie(user_search)
+                    except ValueError as e:
+                        print(e)
+
+                elif option == "6":
                     print("Saindo do sistema...")
                     break
                 

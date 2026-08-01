@@ -2,25 +2,62 @@ from unittest.mock import Mock
 import pytest
 import requests
 
+from models.movie import Movie
+
 from services.movie_services import MovieServices
+from repositories.movies_repository import MovieRepository
 
-def test_search_movie_return_movie(api_client_mock: Mock, movie_service: MovieServices) -> None:
-    api_client_mock.search_api.return_value = {
-        "Response": "True",
-        "Title": "Interstellar",
-        "Year": "2014",
-        "Genre": "Adventure, Drama, Sci-Fi",
-        "Director": "Christopher Nolan",
-        "Plot": "A team travels through a wormhole in space.",
-    }
+def test_search_data_movie_returns_movie( movie_repository: MovieRepository) -> None:
+    movie = Movie(
+        title="Interstellar",
+        year=2014,
+        genre="Adventure, Drama, Sci-Fi",
+        director="Christopher Nolan",
+        plot="buraco de minhoca",
+    )
 
-    movie = movie_service.search_movie("Interstellar")
+    movie_repository.save_movie(movie)
 
-    assert movie.title == "Interstellar"
-    assert movie.year == "2014"
-    assert movie.director == "Christopher Nolan"
+    result = movie_repository.search_data_movie("Interstellar")
 
-    api_client_mock.search_api.assert_called_once_with("Interstellar")
+    assert result == Movie(
+        title="Interstellar",
+        year=2014,
+        genre="Adventure, Drama, Sci-Fi",
+        director="Christopher Nolan",
+        plot="buraco de minhoca",
+        id=1,
+        avaliation=0,
+    )
+
+def test_search_data_movie_capslock_returns_movie( movie_repository: MovieRepository) -> None:
+    movie = Movie(
+        title="Interstellar",
+        year=2014,
+        genre="Adventure, Drama, Sci-Fi",
+        director="Christopher Nolan",
+        plot="buraco de minhoca",
+    )
+
+    movie_repository.save_movie(movie)
+
+    result = movie_repository.search_data_movie("INTERSTELLAR")
+
+    assert result == Movie(
+        title="Interstellar",
+        year=2014,
+        genre="Adventure, Drama, Sci-Fi",
+        director="Christopher Nolan",
+        plot="buraco de minhoca",
+        id=1,
+        avaliation=0,
+    )
+
+def test_search_data_movie_return_none_when_not_found( movie_repository: MovieRepository) -> None:
+
+    result = movie_repository.search_data_movie("Filme Inexistente")
+
+    assert result == None
 
 def test_search_movie_return_nonexistent(api_client_mock:Mock, movie_service: MovieServices) -> None:
     api_client_mock.search_api.return_value = {
@@ -44,3 +81,28 @@ def test_search_movie_api_timeout(api_client_mock:Mock, movie_service: MovieServ
 
     with pytest.raises(ConnectionError, match="A API demorou demais para responder"):
         movie_service.search_movie("Interstellar")
+
+def test_search_movie_returns_saved_movie_without_calling_api(
+    api_client_mock: Mock,
+    movie_repository_mock: Mock,
+    movie_service: MovieServices,
+) -> None:
+    from models.movie import Movie
+
+    saved_movie = Movie(
+        title="Interstellar",
+        year="2014",
+        genre="Adventure, Drama, Sci-Fi",
+        director="Christopher Nolan",
+        plot="A team travels through a wormhole in space.",
+        id=1,
+        avaliation=0,
+    )
+    movie_repository_mock.search_data_movie.return_value = saved_movie
+
+    result = movie_service.search_movie("Interstellar")
+
+    assert result is saved_movie
+    movie_repository_mock.search_data_movie.assert_called_once_with("Interstellar")
+    api_client_mock.search_api.assert_not_called()
+
