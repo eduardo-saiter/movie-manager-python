@@ -20,7 +20,7 @@ class MovieRepository:
             avaliation=row[7],
         )
 
-    def save_movie(self, movie: Movie) -> None:
+    def save_movie(self, movie: Movie) -> Movie:
         self.cur.execute('''
         INSERT INTO movies (title, year, genre, director, plot, comment, avaliation) 
         VALUES (?,?,?,?,?,?,?)
@@ -34,6 +34,8 @@ class MovieRepository:
             movie.avaliation
         ))
         self.conn.commit()
+        movie.id = self.cur.lastrowid
+        return movie
 
     def search_data_movie(self, user_search:str) -> Movie | None:
         self.cur.execute('''
@@ -44,8 +46,6 @@ class MovieRepository:
         if row is None:
             return None
         return self._row_to_movie(row)
-
-
 
     def list_movies(self) -> list[Movie]:
         self.cur.execute(''' SELECT title, 

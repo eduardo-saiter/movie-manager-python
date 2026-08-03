@@ -1,8 +1,4 @@
-from utils.exhibition import (
-    menu,
-    show_movie
-)
-
+from utils.exhibition import menu
 from services.movie_services import MovieServices
 from clients.movie_api_client import MovieApiClient
 from repositories.movies_repository import MovieRepository
@@ -10,12 +6,7 @@ from database.database import (
     connect,
     initialize_database
 )
-
-import requests
-
 import sqlite3
-
-
 
 def main() -> None:
     conn = connect()
@@ -45,15 +36,35 @@ def main() -> None:
                             print("\nProcurando título na internet...")
                             print("Resultado da busca: ")
                             service.details_movie(movie)
-                            service.save_movie(movie)
-
+                            print("\nDeseja salvar esse filme? (s/sim)")
+                            conf_save = input("> ").strip()
+                            if conf_save.lower() in ("s", "sim"):
+                                print("\nDigite sua review? (0-5)")
+                                user_review = input("> ")
+                                if not user_review:
+                                    print("O review não pode ser vazio.")
+                                try:
+                                    user_review = int(user_review)
+                                except:
+                                    print("Insira um número válido")
+                                if user_review > 5 or user_review < 0:
+                                    print("Review inválida.")
+                                else:
+                                    movie.avaliation = user_review
+                    
+                                print("\nDigite seu comentário: ")
+                                user_comment = input("> ")
+                                if not user_comment:
+                                    movie.comment = None
+                                else:
+                                    movie.comment = user_comment
+                                service.save_movie(movie)
                         else:
                             print("Resultado da busca: ")
                             service.details_movie(movie)
                         
                     except (ValueError,ConnectionError) as e:
                         print(f"\n{e}")
-
 
                 elif option == "2":
                     service.list_saved_movies()

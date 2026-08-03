@@ -20,6 +20,7 @@ def conn():
             genre TEXT NOT NULL,
             director TEXT NOT NULL,
             plot TEXT NOT NULL,
+            comment TEXT,
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             avaliation INTEGER NOT NULL DEFAULT 0
         )

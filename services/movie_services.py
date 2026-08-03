@@ -49,32 +49,7 @@ class MovieServices:
         )
 
     def save_movie(self, movie: Movie) -> None:
-        print("\nDeseja salvar esse filme? (s/sim)")
-        conf_save = input("> ").strip()
-        if conf_save.lower() in ("s", "sim"):
-            print("\nDigite sua review? (0-5)")
-            user_review = input("> ")
-            if not user_review:
-                raise ValueError("O review não pode ser vazio.")
-            try:
-                user_review = int(user_review)
-            except:
-                raise ValueError("Insira um número válido")
-            if user_review > 5 or user_review < 0:
-                print("Review inválida.")
-            else:
-                movie.avaliation = user_review
-
-            print("\nDigite seu comentário: ")
-            user_comment = input("> ")
-            if not user_comment:
-                movie.comment = None
-            else:
-                movie.comment = user_comment
-
             self.repository.save_movie(movie)
-        else:
-            return
 
     def list_saved_movies(self) -> None:
         movies = self.repository.list_movies()
