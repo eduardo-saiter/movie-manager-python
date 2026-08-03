@@ -1,3 +1,5 @@
+from models.movie import Movie
+
 
 def menu() -> None:
     print("\n=== Movie Manager ===")
@@ -21,3 +23,13 @@ def show_movie(movie) -> None:
         print(f"Avaliação: {stars} ({movie.avaliation}/5)")
     if movie.comment is not None:
         print(f"Comentário: {movie.comment}")
+
+def show_list_movies(movies: list[Movie]) -> None:
+    if not movies:
+        print("\nNenhum filme cadastrado.")
+        return
+
+    print("\n=== FILMES CADASTRADOS ===")
+
+    for count, movie in enumerate(movies, start=1):
+        print(f"{count}. {movie.title}")

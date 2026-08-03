@@ -1,4 +1,8 @@
-from utils.exhibition import menu
+from utils.exhibition import (
+    menu,
+    show_movie,
+    show_list_movies,
+)
 from services.movie_services import MovieServices
 from clients.movie_api_client import MovieApiClient
 from repositories.movies_repository import MovieRepository
@@ -7,6 +11,7 @@ from database.database import (
     initialize_database
 )
 import sqlite3
+import time
 
 def main() -> None:
     conn = connect()
@@ -31,11 +36,16 @@ def main() -> None:
                     user_search = input("> ").strip()
 
                     try:
+                        print("Procurando filme localmente...")
+                        time.sleep(1.5)
                         movie = service.search_movie(user_search)
-                        if movie.id is None:
+                        if movie is None:
+                            print("Filme não encontrado no banco de dados.")
                             print("\nProcurando título na internet...")
+                            time.sleep(1.5)
+                            movie = service.search_api(user_search)
                             print("Resultado da busca: ")
-                            service.details_movie(movie)
+                            show_movie(movie)
                             print("\nDeseja salvar esse filme? (s/sim)")
                             conf_save = input("> ").strip()
                             if conf_save.lower() in ("s", "sim"):
@@ -61,13 +71,17 @@ def main() -> None:
                                 service.save_movie(movie)
                         else:
                             print("Resultado da busca: ")
-                            service.details_movie(movie)
+                            show_movie(movie)
                         
                     except (ValueError,ConnectionError) as e:
                         print(f"\n{e}")
 
                 elif option == "2":
-                    service.list_saved_movies()
+                    try:
+                       movies = service.list_saved_movies()
+                       show_list_movies(movies)
+                    except ValueError as e:
+                        print (e)
 
                 elif option == "3":
                     try:
@@ -76,8 +90,11 @@ def main() -> None:
                         movie = service.search_movie(user_search)
                         if movie is not None:
                             print("\nDigite sua nova review (0-5):")
-                            user_review = input(">")
+                            user_review = input("> ")
                             service.new_review_movie(user_review,movie)
+                            print("Review adicionada com sucesso.")
+                        else:
+                            print("Filme não encontrado")
                     except ValueError as e:
                         print(e)
                 elif option == "4":
@@ -87,21 +104,20 @@ def main() -> None:
                         movie = service.search_movie(user_search)
                         if movie is not None:
                             print("\nDigite seu novo comentário:")
-                            user_comment = input(">")
+                            user_comment = input("> ")
                             service.new_comment_movie(user_comment,movie)
+                            print("Comentário adicionado com sucesso")
+                        else:
+                            print("Filme não encontrado")
                     except ValueError as e:
                         print(e)
 
                 elif option == "5":
                     try:
                         print("\nQual o nome do filme?")
-                        user_search = input("> ")
-                        if not user_search:
-                            print("O título não pode ser vazio.")
-                        
+                        user_search = input("> ")                  
                         movie = service.search_movie(user_search)
-                
-                        if movie.id is not None:
+                        if movie is not None:
                             print(f"\nDeseja excluir {movie.title} ? (s/sim)")
                             conf = input("> ").strip()
                             if conf.lower() in ("s", "sim"):
@@ -109,11 +125,13 @@ def main() -> None:
                                 id_movie = movie.id
                                 service.delete_saved_movie(id_movie)
                                 print("O filme está sendo excluído...")
+                                time.sleep(1.5)
                                 print("Puf, varrido da existência.")
                                 print(f"O filme {movie.title} foi excluído com sucesso")
+                        else:
+                            print("Filme não encontrado")
                     except ValueError as e:
-                        print(e)
-
+                        print (e)
                 elif option == "6":
                     print("Saindo do sistema...")
                     break

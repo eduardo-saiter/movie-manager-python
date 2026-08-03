@@ -6,22 +6,18 @@ import requests
 
 
 class MovieServices:
-
     def __init__(self, api_client: MovieApiClient, repository: MovieRepository) -> None:
         self.api_client = api_client
         self.repository = repository
 
-    def search_movie(self, user_search: str) -> Movie:
+    def search_movie(self, user_search: str) -> Movie | None:
 
         if not user_search:
             raise ValueError("O título não pode ser vazio.")
+        
+        return self.repository.search_data_movie(user_search)
 
-        movie = self.repository.search_data_movie(user_search)
-
-        if movie is not None:
-            return movie
-        else:
-            print("Este livro não esta no banco de dados.")
+    def search_api(self,user_search:str) -> Movie:
         try:
             data = self.api_client.search_api(user_search)
         except requests.Timeout as error:
@@ -51,18 +47,10 @@ class MovieServices:
     def save_movie(self, movie: Movie) -> None:
             self.repository.save_movie(movie)
 
-    def list_saved_movies(self) -> None:
-        movies = self.repository.list_movies()
-        if not movies:
-            print("Nenhum filme cadastrado.")
-        else:
-            print("\nFilmes Cadastrados:")
-            count = 0
-            for movie in movies:
-                count = 1 + count
-                print(f"{count}. {movie.title}")
+    def list_saved_movies(self) -> list[Movie]:
+        return self.repository.list_movies()
 
-    def new_review_movie(self, user_review: int, movie: Movie) -> None:
+    def new_review_movie(self, user_review: str, movie: Movie) -> None:
         if not user_review:
             raise ValueError("O review não pode ser vazio.")
         try:
@@ -70,7 +58,7 @@ class MovieServices:
         except:
             raise ValueError("Insira um número válido")
         if user_review > 5 or user_review < 0:
-            print("Review inválida.")
+            raise ValueError("Review inválida.")
         else:
             id_movie = movie.id
             self.repository.update_review(user_review, id_movie)
@@ -81,10 +69,7 @@ class MovieServices:
         else:
             id_movie = movie.id
             self.repository.update_comment(user_comment, id_movie)
-            print("Comentário adicionado com sucesso")
 
     def delete_saved_movie(self, id_movie) -> None:
          self.repository.delete_movie(id_movie)
 
-    def details_movie(self, movie) -> None:
-        show_movie(movie)
