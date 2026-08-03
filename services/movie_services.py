@@ -83,26 +83,8 @@ class MovieServices:
             self.repository.update_comment(user_comment, id_movie)
             print("Comentário adicionado com sucesso")
 
-    def delete_saved_movie(self, user_search: str) -> None:
-        if not user_search:
-            raise ValueError("O título não pode ser vazio.")
-
-        movie = self.repository.search_data_movie(user_search)
-
-        if movie is not None:
-            print(f"\nDeseja excluir {movie.title} ? (s/sim)")
-            conf = input("> ").strip()
-            if conf.lower() in ("s", "sim"):
-                print(movie.id)
-                id_movie = movie.id
-                self.repository.delete_movie(id_movie)
-                print("O filme está sendo excluído...")
-                print("Puf, varrido da existência.")
-                print(f"O filme {movie.title} foi excluído com sucesso")
-            else:
-                return
-        else:
-            print("Este livro não esta no banco de dados.")
+    def delete_saved_movie(self, id_movie) -> None:
+         self.repository.delete_movie(id_movie)
 
     def details_movie(self, movie) -> None:
         show_movie(movie)

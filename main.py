@@ -96,7 +96,21 @@ def main() -> None:
                     try:
                         print("\nQual o nome do filme?")
                         user_search = input("> ")
-                        service.delete_saved_movie(user_search)
+                        if not user_search:
+                            print("O título não pode ser vazio.")
+                        
+                        movie = service.search_movie(user_search)
+                
+                        if movie.id is not None:
+                            print(f"\nDeseja excluir {movie.title} ? (s/sim)")
+                            conf = input("> ").strip()
+                            if conf.lower() in ("s", "sim"):
+                                print(movie.id)
+                                id_movie = movie.id
+                                service.delete_saved_movie(id_movie)
+                                print("O filme está sendo excluído...")
+                                print("Puf, varrido da existência.")
+                                print(f"O filme {movie.title} foi excluído com sucesso")
                     except ValueError as e:
                         print(e)
 
