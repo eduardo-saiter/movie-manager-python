@@ -15,7 +15,7 @@ def conn():
     conn.execute(
         """
         CREATE TABLE movies (
-            title TEXT NOT NULL COLLATE NOCASE,
+            title TEXT NOT NULL UNIQUE COLLATE NOCASE,
             year INTEGER NOT NULL,
             genre TEXT NOT NULL,
             director TEXT NOT NULL,

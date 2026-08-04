@@ -24,8 +24,9 @@
             <p class="error-message">
                 {{ error }}
             </p>
+        {% endif %}
 
-        {% elif movie %}
+        {% if movie %}
             <article class="movie-card">
                 {% if movie.poster %}
                         <img
@@ -61,7 +62,10 @@
                     <div class="editable-field">
                         <p>
                             <strong>Avaliação:</strong>
-                            {{ movie.avaliation }}/5
+                            {{ "⭐" * movie.avaliation }}
+                            {{ "☆" * (5 - movie.avaliation) }}
+
+                            ({{ movie.avaliation }}/5)
                         </p>
                     
                         <details class="edit-control">
@@ -110,6 +114,8 @@
                                 <textarea
                                     name="comment"
                                     rows="3"
+                                    maxlength="500"
+                                    required
                                 >{{ movie.comment or "" }}</textarea>
                         
                                 <button type="submit">Salvar</button>

@@ -87,7 +87,7 @@ p {
 .edit-control textarea {
     display: block;
     margin-bottom: 8px;
-    padding: 8px;
+    flex: auto;
 }
 
 .poster-area {

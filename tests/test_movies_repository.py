@@ -1,4 +1,5 @@
 import sqlite3
+import pytest
 
 from models.movie import Movie
 from repositories.movies_repository import MovieRepository
@@ -147,3 +148,27 @@ def test_update_comment_movie(movie_repository:MovieRepository)-> None:
     result = movie_repository.search_data_movie("Interstellar")
 
     assert result.comment == "ruim"
+
+def test_duplicate_title_raises_integrity_error(
+    movie_repository: MovieRepository,
+):
+    movie1 = Movie(
+        title="Interstellar",
+        year=2014,
+        genre="Sci-Fi",
+        director="Christopher Nolan",
+        plot="Plot",
+    )
+
+    movie2 = Movie(
+        title="INTERSTELLAR",
+        year=2014,
+        genre="Sci-Fi",
+        director="Christopher Nolan",
+        plot="Plot",
+    )
+
+    movie_repository.save_movie(movie1)
+
+    with pytest.raises(sqlite3.IntegrityError):
+        movie_repository.save_movie(movie2)

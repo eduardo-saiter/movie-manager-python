@@ -2,8 +2,8 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import RedirectResponse
 from urllib.parse import urlencode
+import sqlite3
 
-from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -41,17 +41,32 @@ service = MovieServices(api_client, repository)
 
 @app.get("/")
 def home(request: Request):
+    try:
+        movies = service.list_saved_movies()
 
-    movies = service.list_saved_movies()
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={
+                "title": "Movie Manager",
+                "movies": movies
+            },
+        )
+    except (ValueError,sqlite3.Error) as error:
+            status_code = (503
+            if isinstance(error, sqlite3.Error)
+            else 400)
 
-    return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-        context={
-            "title": "Movie Manager",
-            "movies": movies
-        },
-    )
+            return templates.TemplateResponse(
+                request=request,
+                name="index.html",
+                context={
+                    "title": "Movie Manager",
+                    "movies": [],
+                    "error": str(error),
+                },
+                status_code=status_code
+            )
 
 
 @app.get("/search")
@@ -65,6 +80,7 @@ def search_movie_page(
         if movie is None:
             movie = service.search_api(title)
 
+
         return templates.TemplateResponse(
             request=request,
             name="search_result.html",
@@ -74,8 +90,12 @@ def search_movie_page(
                 "error": None,
             },
         )
-
-    except ValueError as error:
+        
+    except (ValueError,ConnectionError) as error:
+        status_code = (503
+        if isinstance(error, ConnectionError)
+        else 400)
+         
         return templates.TemplateResponse(
             request=request,
             name="search_result.html",
@@ -84,18 +104,21 @@ def search_movie_page(
                 "movie": None,
                 "error": str(error),
             },
+            status_code=status_code
         )
 
 
 @app.post("/movies/save")
 def save_movie_page(
+    request: Request,
     title: str = Form(...),
 ):
-    saved_movie = service.search_movie(title)
+    try:
+        saved_movie = service.search_movie(title)
 
-    if saved_movie is None:
-        movie = service.search_api(title)
-        service.save_movie(movie)
+        if saved_movie is None:
+                movie = service.search_api(title)
+                service.save_movie(movie)
 
         query = urlencode({"title": title})
 
@@ -103,15 +126,52 @@ def save_movie_page(
             url=f"/search?{query}",
             status_code=303,
         )
+    
+    except (ValueError, ConnectionError) as error:
+        status_code = (
+            503
+            if isinstance(error, ConnectionError)
+            else 400
+        )
 
+        return templates.TemplateResponse(
+            request=request,
+            name="search_result.html",
+            context={
+                "page_title": "Resultado da pesquisa",
+                "movie": None,
+                "error": str(error),
+            },
+            status_code=status_code,
+        )
+    
 @app.post("/movies/{movie_id}/update-rating")
 def update_rating_page(
+    request: Request,
     movie_id: int,
     rating: int = Form(...),
     title: str = Form(...)
 ):
-    service.new_review_movie(movie_id, rating)
+    try:
+        service.new_review_movie(movie_id, rating)
 
+    except (ValueError,ConnectionError) as error:
+        status_code = (503
+        if isinstance(error, ConnectionError)
+        else 400)
+        movie = service.search_movie_by_id(movie_id)
+
+        return templates.TemplateResponse(
+            request=request,
+            name="search_result.html",
+            context={
+                "page_title": "Detalhes do filme",
+                "movie": movie,
+                "error": str(error),
+                },
+            status_code=status_code,
+        )
+    
     query = urlencode({"title": title})
 
     return RedirectResponse(
@@ -123,12 +183,30 @@ def update_rating_page(
 
 @app.post("/movies/{movie_id}/update-comment")
 def update_comment_page(
+    request: Request,
     movie_id: int,
     comment: str = Form(...),
     title: str = Form(...)
 ):
-    service.new_comment_movie(movie_id, comment)
+    try:
+        service.new_comment_movie(movie_id, comment)
+    except (ValueError,ConnectionError) as error:
+        status_code = (503
+        if isinstance(error, ConnectionError)
+        else 400)
+        movie = service.search_movie_by_id(movie_id)
 
+        return templates.TemplateResponse(
+            request=request,
+            name="search_result.html",
+            context={
+                "page_title": "Detalhes do filme",
+                "movie": movie,
+                "error": str(error),
+                },
+            status_code=status_code,
+        )
+        
     query = urlencode({"title": title})
 
     return RedirectResponse(
@@ -139,9 +217,26 @@ def update_comment_page(
 
 @app.post("/movies/{movie_id}/delete-movie", name="delete_movie_page")
 def delete_movie_page(
+    request: Request,
     movie_id: int,
 ):
-    service.delete_saved_movie(movie_id)
+    try:
+        service.delete_saved_movie(movie_id)
+
+    except (ValueError,ConnectionError) as error:
+            status_code = (503
+                if isinstance(error, ConnectionError)
+                else 400)
+            return templates.TemplateResponse(
+                request=request,
+                name="search_result.html",
+                context={
+                    "page_title": "Resultado da pesquisa",
+                    "movie": None,
+                    "error": str(error),
+                },
+                status_code=status_code
+            )
 
     return RedirectResponse(
         url="/",
@@ -155,13 +250,20 @@ def movie_details_page(
 ):
     movie = service.search_movie_by_id(movie_id)
 
-    stars = (
-        "⭐" * movie.avaliation
-        + "☆" * (5 - movie.avaliation))
+    if movie is None:
+        return templates.TemplateResponse(
+            request=request,
+            name="search_result.html",
+            context={
+                "page_title": "Filme não encontrado",
+                "movie": None,
+                "error": "O filme solicitado não foi encontrado.",
+            },
+            status_code=404,
+        )
     
-
     return templates.TemplateResponse(
         request=request,
         name="search_result.html",
-        context={"movie": movie,"stars":str},
+        context={"movie": movie, "page_title": "Detalhes do filme"},
     )

@@ -321,7 +321,7 @@ The tests use mocks and an in-memory SQLite database, so they do not need to acc
 - [x] Add browser forms for catalog actions
 - [x] Synchronize the tests with the poster field and web changes
 - [x] Prevent duplicate movie records at the database level
-- [ ] Improve validation and user-facing error messages
+- [x] Improve validation and user-facing error messages
 - [ ] Move web routes into controllers or routers
 - [ ] Add dedicated movie detail templates
 - [ ] Improve responsive styling and accessibility

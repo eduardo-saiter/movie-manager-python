@@ -91,7 +91,7 @@ def main() -> None:
                         if movie is not None:
                             print("\nDigite sua nova review (0-5):")
                             user_review = input("> ")
-                            service.new_review_movie(user_review,movie)
+                            service.new_review_movie(movie.id,user_review)
                             print("Review adicionada com sucesso.")
                         else:
                             print("Filme não encontrado")
@@ -105,7 +105,7 @@ def main() -> None:
                         if movie is not None:
                             print("\nDigite seu novo comentário:")
                             user_comment = input("> ")
-                            service.new_comment_movie(user_comment,movie)
+                            service.new_comment_movie(movie.id,user_comment)
                             print("Comentário adicionado com sucesso")
                         else:
                             print("Filme não encontrado")

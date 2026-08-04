@@ -19,6 +19,12 @@
     <main class="container">
         <h1>{{ title }}</h1>
 
+        {% if error %}
+            <p class="error-message">
+                {{ error }}
+            </p>
+        {% endif %}
+
         <section class="search-section">
             <h2>Pesquisar filme</h2>
 
@@ -47,14 +53,14 @@
                                     alt="Pôster de {{ movie.title }}"
                                 >
                                 </a>
+                                {% endif %}
                                 <h1 class="movie-title">
                                     {{movie.title}}
                                 </h1>
                                 <p class="movie-rating">
                                     {{ "⭐" * movie.avaliation }}
                                     {{ "☆" * (5 - movie.avaliation) }}
-                                </p>
-                            {% endif %}
+                            </p>
                             </div>
                         
                         </article>
