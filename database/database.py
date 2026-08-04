@@ -15,7 +15,7 @@ def initialize_database(conn: sqlite3.Connection) -> None:
     cur.executescript('''
 CREATE TABLE IF NOT EXISTS movies(
 
-    title TEXT NOT NULL COLLATE NOCASE,
+    title TEXT NOT NULL UNIQUE COLLATE NOCASE,
     year INTEGER NOT NULL,
     genre TEXT NOT NULL,
     director TEXT NOT NULL,

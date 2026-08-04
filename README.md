@@ -319,8 +319,8 @@ The tests use mocks and an in-memory SQLite database, so they do not need to acc
 - [x] Render HTML pages with Jinja2
 - [x] Display posters and rating stars
 - [x] Add browser forms for catalog actions
-- [ ] Synchronize the tests with the poster field and web changes
-- [ ] Prevent duplicate movie records at the database level
+- [x] Synchronize the tests with the poster field and web changes
+- [x] Prevent duplicate movie records at the database level
 - [ ] Improve validation and user-facing error messages
 - [ ] Move web routes into controllers or routers
 - [ ] Add dedicated movie detail templates

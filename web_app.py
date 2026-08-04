@@ -49,8 +49,7 @@ def home(request: Request):
         name="index.html",
         context={
             "title": "Movie Manager",
-            "movies": movies,
-
+            "movies": movies
         },
     )
 

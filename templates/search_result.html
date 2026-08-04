@@ -46,6 +46,7 @@
                 {% if movie.id is none %}
                     <p>Este filme não foi salvo localmente.</p>
                     <form action="/movies/save" method="post">
+
                         <input
                             type="hidden"
                             name="title"
@@ -58,36 +59,36 @@
                     </form>
                 {% else %}
                     <div class="editable-field">
-                            <p>
-                                <strong>Avaliação:</strong>
-                                {{ movie.avaliation }}/5
-                            </p>
+                        <p>
+                            <strong>Avaliação:</strong>
+                            {{ movie.avaliation }}/5
+                        </p>
+                    
+                        <details class="edit-control">
+                            <summary title="Editar avaliação">✏️</summary>
                         
-                            <details class="edit-control">
-                                <summary title="Editar avaliação">✏️</summary>
-                            
-                                <form
-                                    action="/movies/{{ movie.id }}/update-rating"
-                                    method="post"
+                            <form
+                                action="/movies/{{ movie.id }}/update-rating"
+                                method="post"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="title"
+                                    value="{{ movie.title }}"
                                 >
-                                    <input
-                                        type="hidden"
-                                        name="title"
-                                        value="{{ movie.title }}"
-                                    >
-                                    <input
-                                        type="number"
-                                        name="rating"
-                                        min="0"
-                                        max="5"
-                                        value="{{ movie.avaliation }}"
-                                        required
-                                    >
-                            
-                                    <button type="submit">Salvar</button>
-                                </form>
-                            </details>
-                        </div>
+                                <input
+                                    type="number"
+                                    name="rating"
+                                    min="0"
+                                    max="5"
+                                    value="{{ movie.avaliation }}"
+                                    required
+                                >
+                        
+                                <button type="submit">Salvar</button>
+                            </form>
+                        </details>
+                    </div>
                     <div class="editable-field">
                         <p>
                             <strong>Comentário:</strong>
@@ -98,7 +99,7 @@
                             <summary title="Editar comentário">✏️</summary>
                         
                             <form
-                                action="/movies/{{ movie_id }}/update-comment"
+                                action="/movies/{{ movie.id }}/update-comment"
                                 method="post"
                             >
                                 <input
@@ -112,28 +113,27 @@
                                 >{{ movie.comment or "" }}</textarea>
                         
                                 <button type="submit">Salvar</button>
+                            </form>
+                        </details>
+                    </div>
+                    <details class="delete-control">
+                        <summary title="Excluir filme">❌ Excluir filme ❌</summary>
+                                
+                        <form
+                            action="{{ url_for('delete_movie_page', movie_id=movie.id) }}"
+                            method="post"
+                        >
+                            <button type="submit">
+                                Clique para confirmar
+                            </button>
                         </form>
-                    </div>         
+                    </details>         
                 {% endif %}
             </article>
         {% endif %}
-        <details class="delete-control">
-            <summary title="Excluir filme">❌ Excluir filme ❌</summary>
-            
-            <form
-                action="{{ url_for('delete_movie_page', movie_id=movie.id) }}"
-                method="post"
-            >
-                <button type="submit">
-                    Clique para confirmar
-                </button>
-            </form>
-        </details>
-
         <a href="/">
             Voltar para o catálogo
         </a>
-
     </main>
 </body>
 </html>
