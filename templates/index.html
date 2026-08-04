@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>{{ title }}</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='/styles.css') }}"
+    >
+</head>
+
+<body>
+    <main class="container">
+        <h1>{{ title }}</h1>
+
+        <section class="search-section">
+            <h2>Pesquisar filme</h2>
+
+            <form action="/search" method="get">
+                <input
+                    type="text"
+                    name="title"
+                    placeholder="Digite o título do filme"
+                    required
+                >
+            
+                <button type="submit">
+                    Pesquisar
+                </button>
+            </form>
+        </section>
+        {% if movies %} 
+            <div class="movies-grid">
+                    {% for movie in movies %}
+                        <article class="movie-card">
+                            <div class="poster-area">
+                            {% if movie.poster %}
+                                <a href="{{ url_for('search_movie_id_page', movie_id=movie.id) }}"><img
+                                    class="movie-poster"
+                                    src="{{ movie.poster }}"
+                                    alt="Pôster de {{ movie.title }}"
+                                >
+                                </a>
+                                <h1 class="movie-title">
+                                    {{movie.title}}
+                                </h1>
+                                <p class="movie-rating">
+                                    {{ "⭐" * movie.avaliation }}
+                                    {{ "☆" * (5 - movie.avaliation) }}
+                                </p>
+                            {% endif %}
+                            </div>
+                        
+                        </article>
+                    {% endfor %}
+            </div>
+        {%else%}
+            <p>Nenhum filme cadastrado.</p>
+        {% endif %}
+    </main>
+</body>
+</html>

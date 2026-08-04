@@ -55,12 +55,12 @@ def main() -> None:
                                     print("O review não pode ser vazio.")
                                 try:
                                     user_review = int(user_review)
+                                    if user_review > 5 or user_review < 0:
+                                        print("Review inválida.")
+                                    else:
+                                        movie.avaliation = user_review
                                 except:
                                     print("Insira um número válido")
-                                if user_review > 5 or user_review < 0:
-                                    print("Review inválida.")
-                                else:
-                                    movie.avaliation = user_review
                     
                                 print("\nDigite seu comentário: ")
                                 user_comment = input("> ")

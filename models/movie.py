@@ -7,6 +7,7 @@ class Movie:
     genre: str
     director: str
     plot: str
+    poster: str | None = None
     comment : str | None = None
     id: int | None = None
     avaliation: int = 0

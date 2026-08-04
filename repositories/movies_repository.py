@@ -15,21 +15,23 @@ class MovieRepository:
             genre=row[2],
             director=row[3],
             plot=row[4],
-            comment=row[5],
-            id=row[6],
-            avaliation=row[7],
+            poster=row[5],
+            comment=row[6],
+            id=row[7],
+            avaliation=row[8],
         )
 
     def save_movie(self, movie: Movie) -> Movie:
         self.cur.execute('''
-        INSERT INTO movies (title, year, genre, director, plot, comment, avaliation) 
-        VALUES (?,?,?,?,?,?,?)
+        INSERT INTO movies (title, year, genre, director, plot, poster, comment, avaliation) 
+        VALUES (?,?,?,?,?,?,?,?)
         ''', (
             movie.title,
             movie.year,
             movie.genre,
             movie.director,
             movie.plot,
+            movie.poster,
             movie.comment,
             movie.avaliation
         ))
@@ -39,7 +41,7 @@ class MovieRepository:
 
     def search_data_movie(self, user_search:str) -> Movie | None:
         self.cur.execute('''
-        SELECT title, year, genre, director, plot, comment, id, avaliation FROM movies WHERE title = ?
+        SELECT title, year, genre, director, plot, poster, comment, id, avaliation FROM movies WHERE title = ?
         ''',(user_search.strip().lower(),)
         )
         row = self.cur.fetchone()
@@ -47,12 +49,24 @@ class MovieRepository:
             return None
         return self._row_to_movie(row)
 
+    def search_data_movie_id(self, movie_id: int) -> Movie | None:
+        self.cur.execute('''
+        SELECT title, year, genre, director, plot, poster, comment, id, avaliation FROM movies WHERE id = ?
+        ''',(movie_id,)
+        )
+        row = self.cur.fetchone()
+        if row is None:
+            return None
+        return self._row_to_movie(row)
+
+
     def list_movies(self) -> list[Movie]:
         self.cur.execute(''' SELECT title, 
         year, 
         genre, 
         director,
         plot,
+        poster,
         comment, 
         id, 
         avaliation 
