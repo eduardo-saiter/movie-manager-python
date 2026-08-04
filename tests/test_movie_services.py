@@ -182,7 +182,7 @@ def test_update_review_empty_review(movie_repository: MovieRepository, api_clien
     movie_service.save_movie(movie)
     movie = movie_service.search_movie("Interstellar")
     with pytest.raises(ValueError, match="O review não pode ser vazio",):
-        movie_service.new_review_movie("",movie)
+        movie_service.new_review_movie(movie.id,"")
 
 def test_update_review_invalid_int_review(movie_repository: MovieRepository, api_client_mock: Mock) -> None:
     movie_service = MovieServices(
@@ -202,7 +202,7 @@ def test_update_review_invalid_int_review(movie_repository: MovieRepository, api
     movie_service.save_movie(movie)
     movie = movie_service.search_movie("Interstellar")
     with pytest.raises(ValueError, match="Insira um número válido",):
-        movie_service.new_review_movie("dois",movie)
+        movie_service.new_review_movie(movie.id,"dois")
 
 def test_update_review_invalid_range(movie_repository:MovieRepository, api_client_mock:Mock) -> None:
     movie_service = MovieServices(
@@ -222,7 +222,7 @@ def test_update_review_invalid_range(movie_repository:MovieRepository, api_clien
     movie_service.save_movie(movie)
     movie = movie_service.search_movie("Interstellar")
     with pytest.raises(ValueError, match="Review inválida.",):
-        movie_service.new_review_movie("20",movie)
+        movie_service.new_review_movie(movie.id,"20")
 
 def test_update_review_valid(movie_repository:MovieRepository, api_client_mock:Mock) -> None:
     movie_service = MovieServices(
@@ -241,7 +241,7 @@ def test_update_review_valid(movie_repository:MovieRepository, api_client_mock:M
 
     movie_service.save_movie(movie)
     movie = movie_service.search_movie("Interstellar")
-    movie_service.new_review_movie("5",movie)
+    movie_service.new_review_movie(movie.id,"5")
 
     result = movie_service.search_movie("Interstellar")
 
@@ -265,7 +265,7 @@ def test_update_comment_empty_comment(movie_repository: MovieRepository, api_cli
     movie_service.save_movie(movie)
     movie = movie_service.search_movie("Interstellar")
     with pytest.raises(ValueError, match="O novo comentário não pode ser vazio",):
-        movie_service.new_comment_movie("",movie)
+        movie_service.new_comment_movie(movie.id,"")
 
 def test_update_comment_valid(movie_repository:MovieRepository, api_client_mock:Mock) -> None:
     movie_service = MovieServices(
@@ -284,7 +284,7 @@ def test_update_comment_valid(movie_repository:MovieRepository, api_client_mock:
 
     movie_service.save_movie(movie)
     movie = movie_service.search_movie("Interstellar")
-    movie_service.new_comment_movie("ruim",movie)
+    movie_service.new_comment_movie(movie.id,"ruim")
 
     result = movie_service.search_movie("Interstellar")
 
