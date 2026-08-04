@@ -1,9 +1,10 @@
+from collections.abc import Iterator
 from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
 
 from clients.movie_api_client import MovieApiClient
-from database.database import (connect,initialize_database)
+from database.database import connect, initialize_database
 from repositories.movies_repository import MovieRepository
 from services.movie_services import MovieServices
 
@@ -14,16 +15,22 @@ templates = Jinja2Templates(
     directory=str(BASE_DIR / "templates")
 )
 
-conn = connect()
-initialize_database(conn)
-
-repository = MovieRepository(conn)
 api_client = MovieApiClient()
 
-service = MovieServices(
-    api_client,
-    repository,
-)
 
-def get_movie_service() -> MovieServices:
-    return service
+def get_movie_service() -> Iterator[MovieServices]:
+    conn = connect()
+
+    initialize_database(conn)
+
+    repository = MovieRepository(conn)
+
+    service = MovieServices(
+        api_client,
+        repository,
+    )
+
+    try:
+        yield service
+    finally:
+        conn.close()

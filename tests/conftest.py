@@ -89,13 +89,3 @@ def client(
         yield test_client
 
     app.dependency_overrides.clear()
-
-@pytest.fixture(scope="session", autouse=True)
-def close_web_database_connection() -> Iterator[None]:
-    yield
-
-    import sys
-
-    web_dependencies = sys.modules.get("web_dependencies")
-    if web_dependencies is not None:
-        web_dependencies.conn.close()
