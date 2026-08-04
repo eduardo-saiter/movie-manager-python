@@ -366,7 +366,7 @@ Mocks and an isolated in-memory SQLite database keep the test suite independent 
 
 ## 🗺️ Possible next steps
 
-- [ ] Use FastAPI `Depends()` for dependency injection in the routers
+- [x ] Use FastAPI `Depends()` for dependency injection in the routers
 - [ ] Create a dedicated movie-detail template
 - [ ] Use the OMDb/IMDb identifier as the primary uniqueness rule
 - [ ] Add database migrations
