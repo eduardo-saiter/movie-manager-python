@@ -1,462 +1,284 @@
+from collections.abc import Callable
+import sqlite3
 from unittest.mock import Mock
+
 import pytest
 import requests
 
 from models.movie import Movie
-
 from services.movie_services import MovieServices
-from repositories.movies_repository import MovieRepository
 
 
-def test_search_movie_returns_movie(api_client_mock: Mock, movie_repository: MovieRepository) -> None:
+def api_movie_data(**overrides: str) -> dict[str, str]:
+    data = {
+        "Response": "True",
+        "Title": "Interstellar",
+        "Year": "2014",
+        "Genre": "Adventure, Drama, Sci-Fi",
+        "Director": "Christopher Nolan",
+        "Plot": "Exploradores atravessam um buraco de minhoca.",
+        "Poster": "https://example.com/interstellar.jpg",
+    }
+    data.update(overrides)
+    return data
 
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
 
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Adventure, Drama, Sci-Fi",
-        director="Christopher Nolan",
-        plot="buraco de minhoca",
-        comment="bom",
-        avaliation=5,
+def test_search_movie_rejects_blank_title(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+) -> None:
+    with pytest.raises(ValueError, match="título não pode ser vazio"):
+        movie_service.search_movie("   ")
 
-    )
+    repository_mock.search_data_movie.assert_not_called()
 
-    movie_repository.save_movie(movie)
+
+def test_search_movie_returns_repository_result(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    movie = movie_factory(id=1)
+    repository_mock.search_data_movie.return_value = movie
 
     result = movie_service.search_movie("Interstellar")
 
-    assert result == Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Adventure, Drama, Sci-Fi",
-        director="Christopher Nolan",
-        plot="buraco de minhoca",
-        comment="bom",
-        id=1,
-        avaliation=5,
-    )
+    assert result == movie
+    repository_mock.search_data_movie.assert_called_once_with("Interstellar")
 
-    api_client_mock.search_api.assert_not_called()
 
-def test_search_movie_capslock_returns_movie(api_client_mock: Mock, movie_repository: MovieRepository) -> None:
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
+def test_search_movie_by_id_returns_repository_result(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    movie = movie_factory(id=1)
+    repository_mock.search_data_movie_id.return_value = movie
 
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Adventure, Drama, Sci-Fi",
-        director="Christopher Nolan",
-        plot="buraco de minhoca",
-        comment="bom",
-        avaliation=5
-    )
+    assert movie_service.search_movie_by_id(1) == movie
+    repository_mock.search_data_movie_id.assert_called_once_with(1)
 
-    movie_repository.save_movie(movie)
 
-    result = movie_service.search_movie("INTERSTELLAR")
+def test_search_api_builds_movie(
+    movie_service: MovieServices,
+    api_client_mock: Mock,
+) -> None:
+    api_client_mock.search_api.return_value = api_movie_data()
+
+    result = movie_service.search_api("  Interstellar  ")
 
     assert result == Movie(
         title="Interstellar",
-        year=2014,
+        year="2014",
         genre="Adventure, Drama, Sci-Fi",
         director="Christopher Nolan",
-        plot="buraco de minhoca",
-        comment="bom",
-        id=1,
-        avaliation=5,
+        plot="Exploradores atravessam um buraco de minhoca.",
+        poster="https://example.com/interstellar.jpg",
     )
+    api_client_mock.search_api.assert_called_once_with("Interstellar")
 
-def test_search_api_movie_return_nonexistent(api_client_mock: Mock, movie_service: MovieServices) -> None:
+
+def test_search_api_converts_na_poster_to_none(
+    movie_service: MovieServices,
+    api_client_mock: Mock,
+) -> None:
+    api_client_mock.search_api.return_value = api_movie_data(Poster="N/A")
+
+    result = movie_service.search_api("Interstellar")
+
+    assert result.poster is None
+
+
+def test_search_api_raises_when_movie_is_not_found(
+    movie_service: MovieServices,
+    api_client_mock: Mock,
+) -> None:
     api_client_mock.search_api.return_value = {
         "Response": "False",
         "Error": "Movie not found!",
     }
 
     with pytest.raises(ValueError, match="Filme não encontrado"):
-        movie_service.search_api("Filme inexistente")
+        movie_service.search_api("Missing")
 
-def test_search_movie_empty_title(movie_service: MovieServices) -> None:
 
-    with pytest.raises(ValueError, match="O título não pode ser vazio",):
-        movie_service.search_movie("")
+@pytest.mark.parametrize(
+    ("api_error", "message"),
+    [
+        (requests.Timeout(), "demorou demais"),
+        (requests.ConnectionError(), "verifique sua internet"),
+        (requests.RequestException(), "erro durante a comunicação"),
+    ],
+)
+def test_search_api_converts_request_errors_to_connection_error(
+    movie_service: MovieServices,
+    api_client_mock: Mock,
+    api_error: requests.RequestException,
+    message: str,
+) -> None:
+    api_client_mock.search_api.side_effect = api_error
 
-def test_search_movie_api_timeout(api_client_mock: Mock, movie_service: MovieServices) -> None:
-
-    api_client_mock.search_api.side_effect = requests.Timeout()
-
-    with pytest.raises(ConnectionError, match="A API demorou demais para responder"):
+    with pytest.raises(ConnectionError, match=message):
         movie_service.search_api("Interstellar")
 
-def test_search_movie_returns_saved_movie_without_calling_api(
-    api_client_mock: Mock,
-    movie_repository_mock: Mock,
+
+def test_save_movie_calls_repository(
     movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
 ) -> None:
-    from models.movie import Movie
-
-    saved_movie = Movie(
-        title="Interstellar",
-        year="2014",
-        genre="Adventure, Drama, Sci-Fi",
-        director="Christopher Nolan",
-        plot="A team travels through a wormhole in space.",
-        id=1,
-        avaliation=0,
-    )
-    movie_repository_mock.search_data_movie.return_value = saved_movie
-
-    result = movie_service.search_movie("Interstellar")
-
-    assert result is saved_movie
-    movie_repository_mock.search_data_movie.assert_called_once_with(
-        "Interstellar")
-    api_client_mock.search_api.assert_not_called()
-
-def test_list_movies_return_movie(api_client_mock: Mock, movie_repository: MovieRepository) -> None:
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
-
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Adventure, Drama, Sci-Fi",
-        director="Christopher Nolan",
-        plot="buraco de minhoca",
-        comment="bom",
-        avaliation=5
-    )
+    movie = movie_factory()
 
     movie_service.save_movie(movie)
 
-    result = movie_service.list_saved_movies()
+    repository_mock.save_movie.assert_called_once_with(movie)
 
-    assert result == [Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Adventure, Drama, Sci-Fi",
-        director="Christopher Nolan",
-        plot="buraco de minhoca",
-        comment="bom",
-        id=1,
-        avaliation=5
-    )]
 
-def test_list_movies_return_empty(api_client_mock: Mock, movie_repository: MovieRepository) -> None:
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
+def test_save_movie_converts_duplicate_error_to_value_error(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    repository_mock.save_movie.side_effect = sqlite3.IntegrityError()
 
-    result = movie_service.list_saved_movies()
+    with pytest.raises(ValueError, match="já está salvo"):
+        movie_service.save_movie(movie_factory())
 
-    assert result == []
 
-def test_update_review_empty_review(movie_repository: MovieRepository, api_client_mock: Mock) -> None:
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
+def test_list_saved_movies_returns_repository_list(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    movies = [movie_factory(id=1)]
+    repository_mock.list_movies.return_value = movies
 
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Adventure, Drama, Sci-Fi",
-        director="Christopher Nolan",
-        plot="buraco de minhoca",
-        comment="bom",
-        avaliation=5,
+    assert movie_service.list_saved_movies() == movies
 
-    )
 
-    movie_service.save_movie(movie)
-    movie = movie_service.search_movie("Interstellar")
-    with pytest.raises(ValueError, match="A avaliação não pode estar vazia.",):
-        movie_service.new_review_movie(movie.id,"")
+def test_new_review_rejects_missing_movie(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+) -> None:
+    repository_mock.search_data_movie_id.return_value = None
 
-def test_update_review_invalid_int_review(movie_repository: MovieRepository, api_client_mock: Mock) -> None:
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
+    with pytest.raises(ValueError, match="não foi encontrado"):
+        movie_service.new_review_movie(999, 5)
 
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Adventure, Drama, Sci-Fi",
-        director="Christopher Nolan",
-        plot="buraco de minhoca",
-        comment="bom",
-        avaliation=0,
-    )
 
-    movie_service.save_movie(movie)
-    movie = movie_service.search_movie("Interstellar")
-    with pytest.raises(ValueError, match="Insira um número válido",):
-        movie_service.new_review_movie(movie.id,"dois")
+def test_new_review_rejects_blank_string(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    repository_mock.search_data_movie_id.return_value = movie_factory(id=1)
 
-def test_update_review_invalid_range(movie_repository:MovieRepository, api_client_mock:Mock) -> None:
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
+    with pytest.raises(ValueError, match="não pode estar vazia"):
+        movie_service.new_review_movie(1, "   ")
 
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Adventure, Drama, Sci-Fi",
-        director="Christopher Nolan",
-        plot="buraco de minhoca",
-        comment="bom",
-        avaliation=0,
-    )
 
-    movie_service.save_movie(movie)
-    movie = movie_service.search_movie("Interstellar")
-    with pytest.raises(ValueError, match="A avaliação deve estar entre 0 e 5 estrelas.",):
-        movie_service.new_review_movie(movie.id,"-6")
+def test_new_review_rejects_non_numeric_value(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    repository_mock.search_data_movie_id.return_value = movie_factory(id=1)
 
-def test_update_review_valid(movie_repository:MovieRepository, api_client_mock:Mock) -> None:
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
-
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Adventure, Drama, Sci-Fi",
-        director="Christopher Nolan",
-        plot="buraco de minhoca",
-        comment="bom",
-        avaliation=0,
-    )
-
-    movie_service.save_movie(movie)
-    movie = movie_service.search_movie("Interstellar")
-    movie_service.new_review_movie(movie.id,"5")
-
-    result = movie_service.search_movie("Interstellar")
-
-    assert result.avaliation == 5
-
-def test_update_comment_empty_comment(movie_repository: MovieRepository, api_client_mock: Mock) -> None:
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
-
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Adventure, Drama, Sci-Fi",
-        director="Christopher Nolan",
-        plot="buraco de minhoca",
-        comment="bom",
-        avaliation=0,
-    )
-
-    movie_service.save_movie(movie)
-    movie = movie_service.search_movie("Interstellar")
-    with pytest.raises(ValueError, match="O novo comentário não pode ser vazio",):
-        movie_service.new_comment_movie(movie.id,"")
-
-def test_update_comment_valid(movie_repository:MovieRepository, api_client_mock:Mock) -> None:
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
-
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Adventure, Drama, Sci-Fi",
-        director="Christopher Nolan",
-        plot="buraco de minhoca",
-        comment="bom",
-        avaliation=0,
-    )
-
-    movie_service.save_movie(movie)
-    movie = movie_service.search_movie("Interstellar")
-    movie_service.new_comment_movie(movie.id,"ruim")
-
-    result = movie_service.search_movie("Interstellar")
-
-    assert result.comment == "ruim"
-
-def test_new_review_rejects_value_above_five(movie_repository: MovieRepository, api_client_mock: Mock):
-    movie_service = MovieServices(
-                api_client=api_client_mock,
-                repository=movie_repository)
-    movie = Movie(
-            title="Interstellar",
-            year=2014,
-            genre="Adventure, Drama, Sci-Fi",
-            director="Christopher Nolan",
-            plot="buraco de minhoca",
-            comment="bom",
-            avaliation=0,
-        )
-    movie_service.save_movie(movie)
-    movie = movie_service.search_movie("Interstellar")
-
-    with pytest.raises(
-        ValueError,
-        match="A avaliação deve estar entre 0 e 5 estrelas.",
-    ):
-        movie_service.new_review_movie(1, 6)
-
-def test_new_review_accepts_zero(movie_repository: MovieRepository, api_client_mock: Mock):
-    movie_service = MovieServices(
-                api_client=api_client_mock,
-                repository=movie_repository)
-    movie = Movie(
-            title="Interstellar",
-            year=2014,
-            genre="Adventure, Drama, Sci-Fi",
-            director="Christopher Nolan",
-            plot="buraco de minhoca",
-            comment="bom",
-            avaliation=0,
-        )
-    movie_service.save_movie(movie)
-    movie = movie_service.search_movie("Interstellar")
-
-    movie_service.new_review_movie(movie.id, 0)
-
-    result = movie_service.search_movie_by_id(movie.id)
-
-    assert result.avaliation == 0
-
-def test_new_comment_removes_extra_spaces(
-        movie_repository: MovieRepository, 
-        api_client_mock: Mock
-):
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
-    
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Sci-Fi",
-        director="Christopher Nolan",
-        plot="Plot",
-    )
-
-    movie_repository.save_movie(movie)
-    movie_service.search_movie("Interstellar")
-
-    movie_service.new_comment_movie(
-        movie.id,
-        "   Filme excelente!   ",
-    )
-
-    result = movie_service.search_movie_by_id(movie.id)
-
-    assert result.comment == "Filme excelente!"
-
-def test_new_review_rejects_non_numeric_value(movie_service):
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Sci-Fi",
-        director="Christopher Nolan",
-        plot="Plot",
-    )
-
-    movie_service.save_movie(movie)
-    movie_service.search_movie("Interstellar")
-
-    with pytest.raises(
-        ValueError,
-        match="Insira um número válido",
-    ):
+    with pytest.raises(ValueError, match="número válido"):
         movie_service.new_review_movie(1, "cinco")
 
-def test_new_comment_rejects_blank_text(movie_repository: MovieRepository, api_client_mock: Mock):
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
-    
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Sci-Fi",
-        director="Christopher Nolan",
-        plot="Plot",
-    )
 
-    movie_repository.save_movie(movie)
-    movie_service.search_movie("Interstellar")
-    with pytest.raises(
-        ValueError,
-        match="O novo comentário não pode ser vazio",
-    ):
-        movie_service.new_comment_movie(1, "     ")
+@pytest.mark.parametrize("review", [-1, 6, "-1", "6"])
+def test_new_review_rejects_values_outside_range(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+    review: int | str,
+) -> None:
+    repository_mock.search_data_movie_id.return_value = movie_factory(id=1)
 
-def test_new_comment_rejects_long_text(movie_repository: MovieRepository, api_client_mock: Mock):
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
-    
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Sci-Fi",
-        director="Christopher Nolan",
-        plot="Plot",
-    )
+    with pytest.raises(ValueError, match="entre 0 e 5"):
+        movie_service.new_review_movie(1, review)
 
-    movie_repository.save_movie(movie)
-    movie_service.search_movie("Interstellar")
-    with pytest.raises(
-        ValueError,
-        match="500 caracteres",
-    ):
+
+@pytest.mark.parametrize(("review", "expected"), [(0, 0), ("5", 5)])
+def test_new_review_accepts_web_and_console_values(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+    review: int | str,
+    expected: int,
+) -> None:
+    repository_mock.search_data_movie_id.return_value = movie_factory(id=1)
+
+    movie_service.new_review_movie(1, review)
+
+    repository_mock.update_review.assert_called_once_with(expected, 1)
+
+
+def test_new_comment_rejects_missing_movie(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+) -> None:
+    repository_mock.search_data_movie_id.return_value = None
+
+    with pytest.raises(ValueError, match="não foi encontrado"):
+        movie_service.new_comment_movie(999, "Ótimo")
+
+
+@pytest.mark.parametrize("comment", ["", "   "])
+def test_new_comment_rejects_blank_comment(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+    comment: str,
+) -> None:
+    repository_mock.search_data_movie_id.return_value = movie_factory(id=1)
+
+    with pytest.raises(ValueError, match="não pode ser vazio"):
+        movie_service.new_comment_movie(1, comment)
+
+
+def test_new_comment_rejects_more_than_500_characters(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    repository_mock.search_data_movie_id.return_value = movie_factory(id=1)
+
+    with pytest.raises(ValueError, match="500 caracteres"):
         movie_service.new_comment_movie(1, "a" * 501)
 
-def test_new_comment_nonexistent_movie_raises_error(movie_repository: MovieRepository, api_client_mock: Mock):
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
-    
-    movie = Movie(
-        title="Interstellar",
-        year=2014,
-        genre="Sci-Fi",
-        director="Christopher Nolan",
-        plot="Plot",
-    )
 
-    movie_repository.save_movie(movie)
-    movie_service.search_movie("Interstellar")
-    with pytest.raises(
-        ValueError,
-        match="não foi encontrado",
-    ):
-        movie_service.new_comment_movie(999,"bom")
-
-def test_new_review_nonexistent_movie_raises_error(movie_repository: MovieRepository, api_client_mock: Mock):
-    movie_service = MovieServices(
-        api_client=api_client_mock,
-        repository=movie_repository)
-    
-    with pytest.raises(
-        ValueError,
-        match="não foi encontrado",
-    ):
-        movie_service.new_review_movie(999,5)
-
-def test_delete_nonexistent_movie_raises_error(
-    movie_repository: MovieRepository, api_client_mock: Mock,
+def test_new_comment_strips_spaces_before_update(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
 ) -> None:
-    movie_service = MovieServices(
-        api_client= api_client_mock,
-        repository= movie_repository
-    )
-    with pytest.raises(
-        ValueError,
-        match="não foi encontrado",
-    ):
+    repository_mock.search_data_movie_id.return_value = movie_factory(id=1)
+
+    movie_service.new_comment_movie(1, "   Filme excelente!   ")
+
+    repository_mock.update_comment.assert_called_once_with("Filme excelente!", 1)
+
+
+def test_delete_saved_movie_calls_repository(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    repository_mock.search_data_movie_id.return_value = movie_factory(id=1)
+
+    movie_service.delete_saved_movie(1)
+
+    repository_mock.delete_movie.assert_called_once_with(1)
+
+
+def test_delete_saved_movie_rejects_missing_movie(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+) -> None:
+    repository_mock.search_data_movie_id.return_value = None
+
+    with pytest.raises(ValueError, match="não foi encontrado"):
         movie_service.delete_saved_movie(999)

@@ -60,20 +60,27 @@ def search_movie_page(
             },
         )
         
-    except (ValueError,ConnectionError) as error:
-        status_code = (503
-        if isinstance(error, ConnectionError)
-        else 400)
-         
+    except (ValueError, ConnectionError, sqlite3.Error) as error:
+        status_code = (
+            503
+            if isinstance(error, (ConnectionError, sqlite3.Error))
+            else 400
+        )
+        error_message = (
+            "Não foi possível acessar o banco de dados."
+            if isinstance(error, sqlite3.Error)
+            else str(error)
+        )
+
         return templates.TemplateResponse(
             request=request,
             name="search_result.html",
             context={
                 "page_title": "Resultado da pesquisa",
                 "movie": None,
-                "error": str(error),
+                "error": error_message,
             },
-            status_code=status_code
+            status_code=status_code,
         )
 
 

@@ -18,7 +18,7 @@ class MovieServices:
         return self.repository.search_data_movie(user_search)
 
     def search_movie_by_id(self, movie_id: int) -> Movie | None:
-        
+
         return self.repository.search_data_movie_id(movie_id)
 
 
