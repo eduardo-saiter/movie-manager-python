@@ -24,3 +24,6 @@ service = MovieServices(
     api_client,
     repository,
 )
+
+def get_movie_service() -> MovieServices:
+    return service

@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Form, Request
-from fastapi.responses import RedirectResponse
+import sqlite3
 from urllib.parse import urlencode
 
-from web_dependencies import service, templates
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import RedirectResponse
 
-import sqlite3
+from services.movie_services import MovieServices
+from web_dependencies import get_movie_service, templates
 
 router = APIRouter()
 
 @router.get("/")
-def home(request: Request):
+def home(request: Request, service: MovieServices = Depends(get_movie_service)):
     try:
         movies = service.list_saved_movies()
 
@@ -42,6 +43,7 @@ def home(request: Request):
 def search_movie_page(
     request: Request,
     title: str,
+    service: MovieServices = Depends(get_movie_service)
 ):
     try:
         movie = service.search_movie(title)
@@ -88,6 +90,7 @@ def search_movie_page(
 def save_movie_page(
     request: Request,
     title: str = Form(...),
+    service: MovieServices = Depends(get_movie_service)
 ):
     try:
         saved_movie = service.search_movie(title)
@@ -126,7 +129,8 @@ def update_rating_page(
     request: Request,
     movie_id: int,
     rating: int = Form(...),
-    title: str = Form(...)
+    title: str = Form(...),
+    service: MovieServices = Depends(get_movie_service)
 ):
     try:
         service.new_review_movie(movie_id, rating)
@@ -162,7 +166,8 @@ def update_comment_page(
     request: Request,
     movie_id: int,
     comment: str = Form(...),
-    title: str = Form(...)
+    title: str = Form(...),
+    service: MovieServices = Depends(get_movie_service)
 ):
     try:
         service.new_comment_movie(movie_id, comment)
@@ -195,6 +200,7 @@ def update_comment_page(
 def delete_movie_page(
     request: Request,
     movie_id: int,
+    service: MovieServices = Depends(get_movie_service)
 ):
     try:
         service.delete_saved_movie(movie_id)
@@ -223,6 +229,7 @@ def delete_movie_page(
 def movie_details_page(
     request: Request,
     movie_id: int,
+    service: MovieServices = Depends(get_movie_service)
 ):
     movie = service.search_movie_by_id(movie_id)
 

@@ -76,17 +76,19 @@ def web_service_mock() -> Mock:
 
 @pytest.fixture
 def client(
-    monkeypatch: pytest.MonkeyPatch,
     web_service_mock: Mock,
 ) -> Iterator[TestClient]:
-    import routers.movie_router as movie_router
     from web_app import app
+    from web_dependencies import get_movie_service
 
-    monkeypatch.setattr(movie_router, "service", web_service_mock)
+    app.dependency_overrides[get_movie_service] = (
+        lambda: web_service_mock
+    )
 
     with TestClient(app) as test_client:
         yield test_client
 
+    app.dependency_overrides.clear()
 
 @pytest.fixture(scope="session", autouse=True)
 def close_web_database_connection() -> Iterator[None]:
