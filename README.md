@@ -1,5 +1,7 @@
 # 🎬 Movie Manager
 
+[![Tests](https://github.com/eduardo-saiter/movie-manager-python/actions/workflows/tests.yml/badge.svg)](https://github.com/eduardo-saiter/movie-manager-python/actions/workflows/tests.yml)
+
 Movie Manager is a Python application for searching, saving, rating, commenting on, and organizing movies.
 
 The project provides two interfaces over the same application logic:
@@ -10,6 +12,23 @@ The project provides two interfaces over the same application logic:
 When a title is searched, the application combines partial matches from the local SQLite catalog with the OMDb search results. Items already saved are identified by their IMDb ID and open the local detail page; external results open an OMDb detail page and can then be added to the catalog.
 
 The project was developed to practice object-oriented programming, layered architecture, external API consumption, SQLite persistence, validation, automated testing, and web development with Python.
+
+---
+
+## 📸 Screenshots
+
+### Catalog
+
+![Movie Manager catalog](docs/images/catalog.png)
+
+### Search results
+
+![Movie Manager search results](docs/images/search_results.png)
+
+### Movie details
+
+![Movie Manager movie details](docs/images/movie_details_01.png)
+![Movie Manager movie details](docs/images/movie_details_02.png)
 
 ---
 
