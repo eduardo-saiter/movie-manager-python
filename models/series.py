@@ -4,5 +4,5 @@ from models.media import Media
 
 
 @dataclass(kw_only=True)
-class Movie(Media):
-    director: str | None = None
+class Series(Media):
+    total_seasons: int | None = None

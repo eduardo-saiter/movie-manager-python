@@ -28,7 +28,7 @@ def test_search_movie_rejects_blank_title(
     repository_mock: Mock,
 ) -> None:
     with pytest.raises(ValueError, match="título não pode ser vazio"):
-        movie_service.search_movie("   ")
+        movie_service.search_movie_by_title("   ")
 
     repository_mock.search_data_movie.assert_not_called()
 
@@ -41,7 +41,7 @@ def test_search_movie_returns_repository_result(
     movie = movie_factory(id=1)
     repository_mock.search_data_movie.return_value = movie
 
-    result = movie_service.search_movie("Interstellar")
+    result = movie_service.search_movie_by_title("Interstellar")
 
     assert result == movie
     repository_mock.search_data_movie.assert_called_once_with("Interstellar")
@@ -65,7 +65,7 @@ def test_search_api_builds_movie(
 ) -> None:
     api_client_mock.search_api.return_value = api_movie_data()
 
-    result = movie_service.search_api("  Interstellar  ")
+    result = movie_service.search_api_by_title("  Interstellar  ")
 
     assert result == Movie(
         title="Interstellar",
@@ -84,7 +84,7 @@ def test_search_api_converts_na_poster_to_none(
 ) -> None:
     api_client_mock.search_api.return_value = api_movie_data(Poster="N/A")
 
-    result = movie_service.search_api("Interstellar")
+    result = movie_service.search_api_by_title("Interstellar")
 
     assert result.poster is None
 
@@ -99,7 +99,7 @@ def test_search_api_raises_when_movie_is_not_found(
     }
 
     with pytest.raises(ValueError, match="Filme não encontrado"):
-        movie_service.search_api("Missing")
+        movie_service.search_api_by_title("Missing")
 
 
 @pytest.mark.parametrize(
@@ -119,7 +119,7 @@ def test_search_api_converts_request_errors_to_connection_error(
     api_client_mock.search_api.side_effect = api_error
 
     with pytest.raises(ConnectionError, match=message):
-        movie_service.search_api("Interstellar")
+        movie_service.search_api_by_title("Interstellar")
 
 
 def test_save_movie_calls_repository(
@@ -259,7 +259,8 @@ def test_new_comment_strips_spaces_before_update(
 
     movie_service.new_comment_movie(1, "   Filme excelente!   ")
 
-    repository_mock.update_comment.assert_called_once_with("Filme excelente!", 1)
+    repository_mock.update_comment.assert_called_once_with(
+        "Filme excelente!", 1)
 
 
 def test_delete_saved_movie_calls_repository(

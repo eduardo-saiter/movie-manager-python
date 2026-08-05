@@ -32,3 +32,40 @@ class MovieApiClient:
             
             response.raise_for_status()
             return response.json()
+
+    def search_many(self, user_search: str, page: int = 1,) -> dict:
+
+        params = {
+            "apikey": self.api_key,
+            "s": user_search,
+            "type": "movie",
+            "page": page,
+        }
+
+        response = requests.get(
+            self.base_url,
+            params=params,
+            timeout=10,
+        )
+
+        response.raise_for_status()
+
+        return response.json()
+
+    def search_by_imdb_id(self, imdb_id: str,) -> dict:
+        
+        params = {
+            "apikey": self.api_key,
+            "i": imdb_id,
+            "plot": "full",
+        }
+
+        response = requests.get(
+            self.base_url,
+            params=params,
+            timeout=10,
+        )
+
+        response.raise_for_status()
+
+        return response.json()

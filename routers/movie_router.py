@@ -9,6 +9,7 @@ from web_dependencies import get_movie_service, templates
 
 router = APIRouter()
 
+
 @router.get("/")
 def home(request: Request, service: MovieServices = Depends(get_movie_service)):
     try:
@@ -22,52 +23,59 @@ def home(request: Request, service: MovieServices = Depends(get_movie_service)):
                 "movies": movies
             },
         )
-    except (ValueError,sqlite3.Error) as error:
-            status_code = (503
-            if isinstance(error, sqlite3.Error)
-            else 400)
+    except (ValueError, sqlite3.Error) as error:
+        status_code = (503
+                       if isinstance(error, sqlite3.Error)
+                       else 400)
 
-            return templates.TemplateResponse(
-                request=request,
-                name="index.html",
-                context={
-                    "title": "Movie Manager",
-                    "movies": [],
-                    "error": str(error),
-                },
-                status_code=status_code
-            )
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={
+                "title": "Movie Manager",
+                "movies": [],
+                "error": str(error),
+            },
+            status_code=status_code
+        )
 
 
 @router.get("/search")
 def search_movie_page(
     request: Request,
     title: str,
-    service: MovieServices = Depends(get_movie_service)
+    service: MovieServices = Depends(
+        get_movie_service
+    ),
 ):
     try:
-        movie = service.search_movie(title)
-
-        if movie is None:
-            movie = service.search_api(title)
-
+        results = service.search_results(title)
 
         return templates.TemplateResponse(
             request=request,
-            name="search_result.html",
+            name="search_results.html",
             context={
-                "page_title": "Resultado da pesquisa",
-                "movie": movie,
+                "page_title": "Resultados da pesquisa",
+                "search": title,
+                "results": results,
                 "error": None,
             },
         )
-        
-    except (ValueError, ConnectionError, sqlite3.Error) as error:
+
+    except (
+        ValueError,
+        ConnectionError,
+        sqlite3.Error,
+    ) as error:
         status_code = (
             503
-            if isinstance(error, (ConnectionError, sqlite3.Error))
+            if isinstance(
+                error,
+                (ConnectionError, sqlite3.Error),
+            )
             else 400
         )
+
         error_message = (
             "Não foi possível acessar o banco de dados."
             if isinstance(error, sqlite3.Error)
@@ -76,54 +84,61 @@ def search_movie_page(
 
         return templates.TemplateResponse(
             request=request,
-            name="search_result.html",
+            name="search_results.html",
             context={
-                "page_title": "Resultado da pesquisa",
-                "movie": None,
+                "page_title": "Resultados da pesquisa",
+                "search": title,
+                "results": [],
                 "error": error_message,
             },
             status_code=status_code,
         )
 
-
 @router.post("/movies/save")
 def save_movie_page(
     request: Request,
-    title: str = Form(...),
-    service: MovieServices = Depends(get_movie_service)
+    imdb_id: str = Form(...),
+    service: MovieServices = Depends(
+        get_movie_service
+    ),
 ):
     try:
-        saved_movie = service.search_movie(title)
+        movie = service.search_api_by_imdb_id(
+            imdb_id
+        )
 
-        if saved_movie is None:
-                movie = service.search_api(title)
-                service.save_movie(movie)
-
-        query = urlencode({"title": title})
+        service.save_movie(movie)
 
         return RedirectResponse(
-            url=f"/search?{query}",
+            url=f"/movies/{movie.id}",
             status_code=303,
         )
-    
-    except (ValueError, ConnectionError) as error:
+
+    except (
+        ValueError,
+        ConnectionError,
+        sqlite3.Error,
+    ) as error:
         status_code = (
             503
-            if isinstance(error, ConnectionError)
+            if isinstance(
+                error,
+                (ConnectionError, sqlite3.Error),
+            )
             else 400
         )
 
         return templates.TemplateResponse(
             request=request,
-            name="search_result.html",
+            name="details_data.html",
             context={
-                "page_title": "Resultado da pesquisa",
+                "page_title": "Detalhes do filme",
                 "movie": None,
                 "error": str(error),
             },
             status_code=status_code,
         )
-    
+
 @router.post("/movies/{movie_id}/update-rating")
 def update_rating_page(
     request: Request,
@@ -135,27 +150,25 @@ def update_rating_page(
     try:
         service.new_review_movie(movie_id, rating)
 
-    except (ValueError,ConnectionError) as error:
+    except (ValueError, ConnectionError) as error:
         status_code = (503
-        if isinstance(error, ConnectionError)
-        else 400)
+                       if isinstance(error, ConnectionError)
+                       else 400)
         movie = service.search_movie_by_id(movie_id)
 
         return templates.TemplateResponse(
             request=request,
-            name="search_result.html",
+            name="details_data.html",
             context={
                 "page_title": "Detalhes do filme",
                 "movie": movie,
                 "error": str(error),
-                },
+            },
             status_code=status_code,
         )
-    
-    query = urlencode({"title": title})
 
     return RedirectResponse(
-        url=f"/search?{query}",
+        url=f"/movies/{movie_id}",
         status_code=303,
 
     )
@@ -166,32 +179,29 @@ def update_comment_page(
     request: Request,
     movie_id: int,
     comment: str = Form(...),
-    title: str = Form(...),
     service: MovieServices = Depends(get_movie_service)
 ):
     try:
         service.new_comment_movie(movie_id, comment)
-    except (ValueError,ConnectionError) as error:
+    except (ValueError, ConnectionError) as error:
         status_code = (503
-        if isinstance(error, ConnectionError)
-        else 400)
+                       if isinstance(error, ConnectionError)
+                       else 400)
         movie = service.search_movie_by_id(movie_id)
 
         return templates.TemplateResponse(
             request=request,
-            name="search_result.html",
+            name="details_data.html",
             context={
                 "page_title": "Detalhes do filme",
                 "movie": movie,
                 "error": str(error),
-                },
+            },
             status_code=status_code,
         )
-        
-    query = urlencode({"title": title})
 
     return RedirectResponse(
-        url=f"/search?{query}",
+        url=f"/movies/{movie_id}",
         status_code=303,
     )
 
@@ -205,25 +215,26 @@ def delete_movie_page(
     try:
         service.delete_saved_movie(movie_id)
 
-    except (ValueError,ConnectionError) as error:
-            status_code = (503
-                if isinstance(error, ConnectionError)
-                else 400)
-            return templates.TemplateResponse(
-                request=request,
-                name="search_result.html",
-                context={
-                    "page_title": "Resultado da pesquisa",
-                    "movie": None,
-                    "error": str(error),
-                },
-                status_code=status_code
-            )
+    except (ValueError, ConnectionError) as error:
+        status_code = (503
+                       if isinstance(error, ConnectionError)
+                       else 400)
+        return templates.TemplateResponse(
+            request=request,
+            name="details_data.html",
+            context={
+                "page_title": "Resultado da pesquisa",
+                "movie": None,
+                "error": str(error),
+            },
+            status_code=status_code
+        )
 
     return RedirectResponse(
         url="/",
         status_code=303,
     )
+
 
 @router.get("/movies/{movie_id}", name="search_movie_id_page")
 def movie_details_page(
@@ -236,7 +247,7 @@ def movie_details_page(
     if movie is None:
         return templates.TemplateResponse(
             request=request,
-            name="search_result.html",
+            name="details_data.html",
             context={
                 "page_title": "Filme não encontrado",
                 "movie": None,
@@ -244,9 +255,53 @@ def movie_details_page(
             },
             status_code=404,
         )
-    
+
     return templates.TemplateResponse(
         request=request,
-        name="search_result.html",
+        name="details_data.html",
         context={"movie": movie, "page_title": "Detalhes do filme"},
     )
+
+@router.get(
+    "/omdb/{imdb_id}",
+    name="omdb_details_page",
+)
+def omdb_details_page(
+    request: Request,
+    imdb_id: str,
+    service: MovieServices = Depends(
+        get_movie_service
+    ),
+):
+    try:
+        movie = service.search_api_by_imdb_id(
+            imdb_id
+        )
+
+        return templates.TemplateResponse(
+            request=request,
+            name="details_data.html",
+            context={
+                "page_title": "Detalhes do filme",
+                "movie": movie,
+                "error": None,
+            },
+        )
+
+    except (ValueError, ConnectionError) as error:
+        status_code = (
+            503
+            if isinstance(error, ConnectionError)
+            else 404
+        )
+
+        return templates.TemplateResponse(
+            request=request,
+            name="details_data.html",
+            context={
+                "page_title": "Filme não encontrado",
+                "movie": None,
+                "error": str(error),
+            },
+            status_code=status_code,
+        )

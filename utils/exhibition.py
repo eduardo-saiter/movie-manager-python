@@ -23,6 +23,8 @@ def show_movie(movie) -> None:
         print(f"Avaliação: {stars} ({movie.avaliation}/5)")
     if movie.comment is not None:
         print(f"Comentário: {movie.comment}")
+    print(f"Criado em: {movie.created_at}")
+    print(f"Última modificação: {movie.updated_at}")
 
 def show_list_movies(movies: list[Movie]) -> None:
     if not movies:

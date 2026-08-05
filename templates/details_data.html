@@ -2,22 +2,12 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>{{ page_title }}</title>
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', path='/styles.css') }}"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> {{page_title}} </title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
 </head>
-
 <body>
-    <main class="container">
+     <main class="container">
         <h1>{{ page_title }}</h1>
 
         {% if error %}
@@ -38,11 +28,33 @@
                 <div class="movie-information">
                     <h2>{{ movie.title }}</h2>
 
-                    <p>Ano: {{ movie.year }}</p>
-                    <p>Gênero: {{ movie.genre }}</p>
-                    <p>Diretor: {{ movie.director }}</p>
-                    <p>Sinopse: {{ movie.plot }}</p>
-
+                    <p><strong>Ano:</strong> {{ movie.year }}</p>
+                    <p><strong>Gênero:</strong> {{ movie.genre }}</p>
+                    <p><strong>Diretor</strong>: {{ movie.director }}</p>
+                    <p><strong>Sinopse:</strong> {{ movie.plot }}</p>
+                    <p><strong>Lançamento:</strong> {{ movie.released_at or "Não informado" }}</p>
+                    <p><strong>Duração:</strong> {{ movie.runtime_minutes or "Não informado" }} min</p>
+                    <p><strong>IMDb:</strong> {{ movie.imdb_rating or "N/A" }}</p>
+                    <p><strong>Votos:</strong> {{ movie.imdb_votes or "N/A" }}</p>
+                    <p><strong>Metascore:</strong> {{ movie.metascore or "N/A" }}</p>
+                    <p><strong>Prêmios:</strong> {{ movie.awards or "Não informado" }}</p>
+                    {% if movie.external_ratings %}
+                        <section class="external-ratings">
+                            <h3>Avaliações externas</h3>
+                        
+                            {% for rating in movie.external_ratings %}
+                                <p>
+                                    <strong>{{ rating.source }}:</strong>
+                                    {{ rating.value }}
+                                </p>
+                            {% endfor %}
+                        </section>
+                    {% endif %}
+                    <p>
+                        <strong>Bilheteria:</strong>
+                        {{ movie.box_office or "Não informado" }}
+                    </p>
+                    
                     </div>
                 {% if movie.id is none %}
                     <p>Este filme não foi salvo localmente.</p>
@@ -50,8 +62,8 @@
 
                         <input
                             type="hidden"
-                            name="title"
-                            value="{{ movie.title }}"
+                            name="imdb_id"
+                            value="{{ movie.imdb_id }}"
                         >
 
                         <button type="submit">
