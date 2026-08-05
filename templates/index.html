@@ -1,75 +1,115 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+{% extends "base.html" %}
 
-    <title>{{ title }}</title>
+{% block title %}{{ title }}{% endblock %}
 
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', path='/styles.css') }}"
-    >
-</head>
-
-<body>
-    <main class="container">
-        <h1>{{ title }}</h1>
-
-        {% if error %}
-            <p class="error-message">
-                {{ error }}
+{% block content %}
+    <header class="catalog-header">
+        <div>
+            <p class="page-eyebrow">
+                Minha coleção
             </p>
+
+            <h1>{{ title }}</h1>
+
+            <p class="catalog-description">
+                Pesquise novos filmes ou explore os títulos
+                salvos no seu catálogo.
+            </p>
+        </div>
+
+        {% if movies %}
+            <span class="catalog-count">
+                {{ movies | length }}
+                filme{% if movies | length != 1 %}s{% endif %}
+            </span>
         {% endif %}
+    </header>
 
-        <section class="search-section">
-            <h2>Pesquisar filme</h2>
+    {% if error %}
+        <p class="error-message" role="alert">
+            {{ error }}
+        </p>
+    {% endif %}
 
-            <form action="/search" method="get">
-                <input
-                    type="text"
-                    name="title"
-                    placeholder="Digite o título do filme"
-                    required
-                >
-            
-                <button type="submit">
-                    Pesquisar
-                </button>
-            </form>
-        </section>
-        {% if movies %} 
-            <div class="movies-grid">
-                    {% for movie in movies %}
-                        <article class="movie-card">
-                            <div class="poster-area">
-                            {% if movie.poster %}
-                                <a href="{{ url_for('search_movie_id_page', movie_id=movie.id) }}"><img
+    <section
+        class="search-section"
+        aria-labelledby="search-heading"
+    >
+        <h2 id="search-heading">
+            Encontrar filme
+        </h2>
+
+        <form
+            action="{{ url_for('search_movie_page') }}"
+            method="get"
+        >
+            <label
+                class="visually-hidden"
+                for="movie-search"
+            >
+                Pesquisar pelo título do filme
+            </label>
+
+            <input
+                id="movie-search"
+                type="search"
+                name="title"
+                placeholder="Ex.: Interstellar"
+                required
+            >
+
+            <button type="submit">
+                Pesquisar
+            </button>
+        </form>
+    </section>
+
+    {% if movies %}
+        <section class="movies-grid" aria-label="Filmes salvos no catálogo">
+            {% for movie in movies %}
+                <article class="catalog-card">
+                    <div class="poster-area">
+                        {% if movie.poster %}
+                            <a
+                                href="{{ url_for('search_movie_id_page', movie_id=movie.id) }}"
+                                aria-label="Abrir detalhes de {{ movie.title }}"
+                            >
+                                <img
                                     class="movie-poster"
                                     src="{{ movie.poster }}"
                                     alt="Pôster de {{ movie.title }}"
+                                    loading="lazy"
+                                    decoding="async"
                                 >
-                                </a>
-                                {% endif %}
-                                <h1 class="movie-title">
-                                    <a href="{{ url_for('search_movie_id_page', movie_id=movie.id) }}">
-                                        {{ movie.title }}
-                                    </a>
-                                </h1>
-                                <p class="movie-rating">
-                                    {{ "⭐" * movie.avaliation }}
-                                    {{ "☆" * (5 - movie.avaliation) }}
-                            </p>
-                            </div>                      
-                        </article>
-                    {% endfor %}
-            </div>
-        {%else%}
-            <p>Nenhum filme cadastrado.</p>
-        {% endif %}
-    </main>
-</body>
-</html>
+                            </a>
+                        {% else %}
+                            <a
+                                class="catalog-poster-placeholder"
+                                href="{{ url_for('search_movie_id_page', movie_id=movie.id) }}"
+                                aria-label="Abrir detalhes de {{ movie.title }}"
+                            >
+                                Sem pôster
+                            </a>
+                        {% endif %}
+
+                        <h2 class="movie-title">
+                            <a href="{{ url_for('search_movie_id_page', movie_id=movie.id) }}">
+                                {{ movie.title }}
+                            </a>
+                        </h2>
+
+                        <p
+                            class="movie-rating"
+                            aria-label="Avaliação: {{ movie.avaliation }} de 5"
+                        >
+                            {{ "⭐" * movie.avaliation }}
+                            {{ "☆" * (5 - movie.avaliation) }}
+                        </p>
+                    </div>
+                </article>
+            {% endfor %}
+        </section>
+    {% elif not error %}
+        <p>Nenhum filme cadastrado.</p>
+    {% endif %}
+{% endblock %}

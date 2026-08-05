@@ -11,7 +11,7 @@ def menu() -> None:
     print("6. Exit")
 
 
-def show_movie(movie) -> None:
+def show_movie(movie: Movie) -> None:
     print(f"Título: {movie.title}")
     print(f"Ano: {movie.year}")
     print(f"Gênero: {movie.genre}")
@@ -19,12 +19,16 @@ def show_movie(movie) -> None:
     if movie.avaliation is not None:
         stars = (
             "⭐" * movie.avaliation
-            + "☆" * (5 - movie.avaliation))
+            + "☆" * (5 - movie.avaliation)
+        )
         print(f"Avaliação: {stars} ({movie.avaliation}/5)")
     if movie.comment is not None:
         print(f"Comentário: {movie.comment}")
-    print(f"Criado em: {movie.created_at}")
-    print(f"Última modificação: {movie.updated_at}")
+    if movie.created_at is not None:
+        print(f"Criado em: {movie.created_at}")
+    if movie.updated_at is not None:
+        print(f"Última modificação: {movie.updated_at}")
+
 
 def show_list_movies(movies: list[Movie]) -> None:
     if not movies:

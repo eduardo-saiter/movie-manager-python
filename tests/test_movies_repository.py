@@ -136,6 +136,38 @@ def test_search_movie_results_returns_empty_for_blank_search(
     assert movie_repository.search_movie_results("   ") == []
 
 
+def test_search_movie_results_treats_like_wildcards_as_text(
+    movie_repository: MovieRepository,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    movie_repository.save_movie(
+        movie_factory(
+            title="100% Wolf",
+            imdb_id="tt-percent",
+        )
+    )
+    movie_repository.save_movie(
+        movie_factory(
+            title="Under_score",
+            imdb_id="tt-underscore",
+        )
+    )
+    movie_repository.save_movie(
+        movie_factory(
+            title="Unrelated",
+            imdb_id="tt-unrelated",
+        )
+    )
+
+    percent_results = movie_repository.search_movie_results("100%")
+    underscore_results = movie_repository.search_movie_results("_")
+
+    assert [result.title for result in percent_results] == ["100% Wolf"]
+    assert [result.title for result in underscore_results] == [
+        "Under_score"
+    ]
+
+
 def test_find_local_ids_by_imdb_ids_is_case_insensitive(
     movie_repository: MovieRepository,
     movie_factory: Callable[..., Movie],

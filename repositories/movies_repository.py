@@ -255,7 +255,13 @@ class MovieRepository:
         if not normalized_search:
             return []
 
-        pattern = f"%{normalized_search}%"
+        escaped_search = (
+            normalized_search
+            .replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
+        )
+        pattern = f"%{escaped_search}%"
 
         rows = self.conn.execute(
             """
@@ -267,7 +273,7 @@ class MovieRepository:
                 media_type,
                 poster
             FROM media
-            WHERE title LIKE ? COLLATE NOCASE
+            WHERE title COLLATE NOCASE LIKE ? ESCAPE '\\'
               AND media_type = 'movie'
             ORDER BY
                 title COLLATE NOCASE,
@@ -294,7 +300,7 @@ class MovieRepository:
     ) -> dict[str, int]:
         normalized_ids = list(
             dict.fromkeys(
-                imdb_id.strip()
+                imdb_id.strip().casefold()
                 for imdb_id in imdb_ids
                 if imdb_id.strip()
             )

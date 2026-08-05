@@ -5,21 +5,49 @@ import requests
 
 import clients.movie_api_client as movie_api_client_module
 from clients.movie_api_client import MovieApiClient
+from errors import MovieApiConfigurationError
 
 
-def build_response(data: dict) -> Mock:
+def build_response(data: object) -> Mock:
     response = Mock()
     response.json.return_value = data
     return response
 
 
-def test_init_raises_when_api_key_is_missing(
+def test_client_only_requires_api_key_when_a_request_is_made(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("OMDB_API_KEY", raising=False)
 
-    with pytest.raises(ValueError, match="OMDB_API_KEY não encontrada"):
-        MovieApiClient()
+    client = MovieApiClient()
+
+    with pytest.raises(
+        MovieApiConfigurationError,
+        match="OMDB_API_KEY não encontrada",
+    ):
+        client.search_api("Interstellar")
+
+
+def test_client_rejects_whitespace_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OMDB_API_KEY", "   ")
+
+    with pytest.raises(MovieApiConfigurationError):
+        MovieApiClient().search_api("Interstellar")
+
+
+def test_client_accepts_api_key_directly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OMDB_API_KEY", raising=False)
+    response = build_response({"Response": "True"})
+    get_mock = Mock(return_value=response)
+    monkeypatch.setattr(movie_api_client_module.requests, "get", get_mock)
+
+    MovieApiClient(api_key="direct-key").search_api("Interstellar")
+
+    assert get_mock.call_args.kwargs["params"]["apikey"] == "direct-key"
 
 
 def test_search_api_uses_title_movie_and_full_plot(
@@ -119,4 +147,19 @@ def test_client_propagates_http_error(
     )
 
     with pytest.raises(requests.HTTPError, match="HTTP 500"):
+        MovieApiClient().search_api("Interstellar")
+
+
+def test_client_rejects_non_object_json_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OMDB_API_KEY", "fake-api-key")
+    response = build_response([])
+    monkeypatch.setattr(
+        movie_api_client_module.requests,
+        "get",
+        Mock(return_value=response),
+    )
+
+    with pytest.raises(requests.RequestException, match="resposta inválida"):
         MovieApiClient().search_api("Interstellar")

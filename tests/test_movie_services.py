@@ -5,6 +5,11 @@ from unittest.mock import Mock
 import pytest
 import requests
 
+from errors import (
+    MovieAlreadySavedError,
+    MovieApiConfigurationError,
+    MovieNotFoundError,
+)
 from models.media_search_result import MediaSearchResult
 from models.movie import Movie
 from services.movie_services import MovieServices
@@ -145,6 +150,18 @@ def test_search_api_by_title_converts_request_errors(
     api_client_mock.search_api.side_effect = api_error
 
     with pytest.raises(ConnectionError, match=message):
+        movie_service.search_api_by_title("Interstellar")
+
+
+def test_search_api_by_title_converts_missing_api_key(
+    movie_service: MovieServices,
+    api_client_mock: Mock,
+) -> None:
+    api_client_mock.search_api.side_effect = MovieApiConfigurationError(
+        "OMDB_API_KEY não encontrada."
+    )
+
+    with pytest.raises(ConnectionError, match="não foi configurada"):
         movie_service.search_api_by_title("Interstellar")
 
 
@@ -324,14 +341,93 @@ def test_save_movie_calls_repository(
     repository_mock.save_movie.assert_called_once_with(movie)
 
 
+def test_save_movie_rejects_missing_imdb_id(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    with pytest.raises(ValueError, match="sem IMDb ID"):
+        movie_service.save_movie(movie_factory(imdb_id=None))
+
+    repository_mock.save_movie.assert_not_called()
+
+
+def test_save_movie_rejects_invalid_review(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    with pytest.raises(ValueError, match="entre 0 e 5"):
+        movie_service.save_movie(movie_factory(avaliation=6))
+
+    repository_mock.save_movie.assert_not_called()
+
+
+def test_save_movie_normalizes_text_fields(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    movie = movie_factory(
+        title="  Interstellar  ",
+        imdb_id="  tt0816692  ",
+        comment="  Excelente  ",
+    )
+
+    movie_service.save_movie(movie)
+
+    assert movie.title == "Interstellar"
+    assert movie.imdb_id == "tt0816692"
+    assert movie.comment == "Excelente"
+    repository_mock.save_movie.assert_called_once_with(movie)
+
+
+def test_save_movie_rejects_blank_title(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    with pytest.raises(ValueError, match="título não pode ser vazio"):
+        movie_service.save_movie(movie_factory(title="   "))
+
+    repository_mock.save_movie.assert_not_called()
+
+
+def test_save_movie_rejects_long_initial_comment(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    with pytest.raises(ValueError, match="no máximo 500"):
+        movie_service.save_movie(movie_factory(comment="a" * 501))
+
+    repository_mock.save_movie.assert_not_called()
+
+
 def test_save_movie_converts_duplicate_error_to_value_error(
     movie_service: MovieServices,
     repository_mock: Mock,
     movie_factory: Callable[..., Movie],
 ) -> None:
-    repository_mock.save_movie.side_effect = sqlite3.IntegrityError()
+    repository_mock.save_movie.side_effect = sqlite3.IntegrityError(
+        "UNIQUE constraint failed: media.imdb_id"
+    )
 
-    with pytest.raises(ValueError, match="já está salvo"):
+    with pytest.raises(MovieAlreadySavedError, match="já está salvo"):
+        movie_service.save_movie(movie_factory())
+
+
+def test_save_movie_does_not_hide_other_integrity_errors(
+    movie_service: MovieServices,
+    repository_mock: Mock,
+    movie_factory: Callable[..., Movie],
+) -> None:
+    repository_mock.save_movie.side_effect = sqlite3.IntegrityError(
+        "UNIQUE constraint failed: external_ratings.media_id, "
+        "external_ratings.source"
+    )
+
+    with pytest.raises(sqlite3.IntegrityError, match="external_ratings"):
         movie_service.save_movie(movie_factory())
 
 
@@ -391,7 +487,7 @@ def test_new_review_rejects_missing_movie(
 ) -> None:
     repository_mock.update_review.return_value = False
 
-    with pytest.raises(ValueError, match="não foi encontrado"):
+    with pytest.raises(MovieNotFoundError, match="não foi encontrado"):
         movie_service.new_review_movie(999, 5)
 
 
@@ -431,7 +527,7 @@ def test_new_comment_rejects_missing_movie(
 ) -> None:
     repository_mock.update_comment.return_value = False
 
-    with pytest.raises(ValueError, match="não foi encontrado"):
+    with pytest.raises(MovieNotFoundError, match="não foi encontrado"):
         movie_service.new_comment_movie(999, "Ótimo")
 
 
@@ -452,5 +548,5 @@ def test_delete_saved_movie_rejects_missing_movie(
 ) -> None:
     repository_mock.delete_movie.return_value = False
 
-    with pytest.raises(ValueError, match="não foi encontrado"):
+    with pytest.raises(MovieNotFoundError, match="não foi encontrado"):
         movie_service.delete_saved_movie(999)

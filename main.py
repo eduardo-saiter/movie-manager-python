@@ -1,16 +1,21 @@
+import sqlite3
+
+from clients.movie_api_client import MovieApiClient
+from database.database import connect, initialize_database
+from repositories.movies_repository import MovieRepository
+from services.movie_services import MovieServices
 from utils.exhibition import (
     menu,
-    show_movie,
     show_list_movies,
+    show_movie,
 )
-from services.movie_services import MovieServices
-from clients.movie_api_client import MovieApiClient
-from repositories.movies_repository import MovieRepository
-from database.database import (
-    connect,
-    initialize_database
-)
-import sqlite3
+
+
+def _require_movie_id(movie_id: int | None) -> int:
+    if movie_id is None:
+        raise ValueError("O filme não possui um ID válido.")
+
+    return movie_id
 
 
 def main() -> None:
@@ -49,16 +54,16 @@ def main() -> None:
                             if conf_save.lower() in ("s", "sim"):
                                 print("\nDigite sua review? (0-5)")
                                 user_review = input("> ")
-                                if not user_review:
-                                    print("O review não pode ser vazio.")
                                 try:
-                                    user_review = int(user_review)
-                                    if user_review > 5 or user_review < 0:
-                                        print("Review inválida.")
-                                    else:
-                                        movie.avaliation = user_review
+                                    review = int(user_review)
+                                    if not 0 <= review <= 5:
+                                        raise ValueError
+                                    movie.avaliation = review
                                 except ValueError:
-                                    print("Insira um número válido")
+                                    print(
+                                        "Avaliação inválida. "
+                                        "O filme será salvo com 0 estrelas."
+                                    )
 
                                 print("\nDigite seu comentário: ")
                                 user_comment = input("> ")
@@ -89,7 +94,10 @@ def main() -> None:
                         if movie is not None:
                             print("\nDigite sua nova review (0-5):")
                             user_review = input("> ")
-                            service.new_review_movie(movie.id, user_review)
+                            service.new_review_movie(
+                                _require_movie_id(movie.id),
+                                user_review,
+                            )
                             print("Review adicionada com sucesso.")
                         else:
                             print("Filme não encontrado")
@@ -103,7 +111,10 @@ def main() -> None:
                         if movie is not None:
                             print("\nDigite seu novo comentário:")
                             user_comment = input("> ")
-                            service.new_comment_movie(movie.id, user_comment)
+                            service.new_comment_movie(
+                                _require_movie_id(movie.id),
+                                user_comment,
+                            )
                             print("Comentário adicionado com sucesso")
                         else:
                             print("Filme não encontrado")
@@ -119,13 +130,15 @@ def main() -> None:
                             print(f"\nDeseja excluir {movie.title} ? (s/sim)")
                             conf = input("> ").strip()
                             if conf.lower() in ("s", "sim"):
-                                print(movie.id)
-                                id_movie = movie.id
-                                service.delete_saved_movie(id_movie)
+                                service.delete_saved_movie(
+                                    _require_movie_id(movie.id)
+                                )
                                 print("O filme está sendo excluído...")
                                 print("Puf, varrido da existência.")
                                 print(
-                                    f"O filme {movie.title} foi excluído com sucesso")
+                                    f"O filme {movie.title} "
+                                    "foi excluído com sucesso"
+                                )
                         else:
                             print("Filme não encontrado")
                     except ValueError as e:

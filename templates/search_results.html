@@ -1,102 +1,133 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
+{% extends "base.html" %}
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+{% block title %}{{ page_title }}{% endblock %}
 
-    <title>{{ page_title }}</title>
-
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', path='/styles.css') }}"
-    >
-</head>
-
-<body>
-    <main class="container">
-        <h1>{{ page_title }}</h1>
-
-        <p>
-            Pesquisa por:
-            <strong>{{ search }}</strong>
+{% block content %}
+    <header class="search-page-header">
+        <p class="page-eyebrow">
+            Busca
         </p>
 
-        {% if error %}
-            <p class="error-message">
-                {{ error }}
-            </p>
-        {% endif %}
+        <h1>{{ page_title }}</h1>
 
-        {% if results %}
-            <section class="search-results-list">
-                {% for result in results %}
+        <p class="search-summary">
+            Resultados para
+            <strong>“{{ search }}”</strong>
 
-                    {% if result.local_id is not none %}
-                        {% set details_url = url_for(
-                            'search_movie_id_page',
-                            movie_id=result.local_id
-                        ) %}
-                    {% else %}
-                        {% set details_url = url_for(
-                            'omdb_details_page',
-                            imdb_id=result.imdb_id
-                        ) %}
-                    {% endif %}
+            {% if results %}
+                <span>
+                    {{ results | length }}
+                    resultado{% if results | length != 1 %}s{% endif %}
+                </span>
+            {% endif %}
+        </p>
+    </header>
+
+    {% if error %}
+        <p class="error-message" role="alert">
+            {{ error }}
+        </p>
+    {% endif %}
+
+    {% if results %}
+        <section
+            class="search-results-list"
+            aria-label="Resultados encontrados"
+        >
+            {% for result in results %}
+                {% if result.local_id is not none %}
+                    {% set details_url = url_for(
+                        'search_movie_id_page',
+                        movie_id=result.local_id
+                    ) %}
+                {% elif result.imdb_id %}
+                    {% set details_url = url_for(
+                        'omdb_details_page',
+                        imdb_id=result.imdb_id
+                    ) %}
+                {% else %}
+                    {% set details_url = none %}
+                {% endif %}
+
+                {% if details_url %}
                     <a
                         class="search-result-link"
                         href="{{ details_url }}"
+                        aria-label="Abrir detalhes de {{ result.title }}"
                     >
-                        <article class="search-result-card">
-                            {% if result.poster %}
-                                <img
-                                    class="search-result-poster"
-                                    src="{{ result.poster }}"
-                                    alt="Pôster de {{ result.title }}"
-                                >
+                {% endif %}
+
+                <article class="search-result-card">
+                    {% if result.poster %}
+                        <img
+                            class="search-result-poster"
+                            src="{{ result.poster }}"
+                            alt="Pôster de {{ result.title }}"
+                            loading="lazy"
+                            decoding="async"
+                        >
+                    {% else %}
+                        <div
+                            class="poster-placeholder"
+                            aria-label="Pôster não disponível"
+                        >
+                            Sem pôster
+                        </div>
+                    {% endif %}
+
+                    <div class="search-result-information">
+                        <div class="search-result-heading">
+                            <h2>{{ result.title }}</h2>
+
+                            {% if result.local_id is not none %}
+                                <span class="saved-badge">
+                                    Salvo
+                                </span>
                             {% else %}
-                                <div class="poster-placeholder">
-                                    Sem pôster
-                                </div>
+                                <span class="api-badge">
+                                    OMDb
+                                </span>
                             {% endif %}
+                        </div>
 
-                            <div class="search-result-information">
-                                <h2>{{ result.title }}</h2>
+                        <div class="search-result-metadata">
+                            <span>
+                                {{ result.year or "Ano não informado" }}
+                            </span>
 
-                                <p>
-                                    <strong>Ano:</strong>
-                                    {{ result.year or "Não informado" }}
-                                </p>
+                            <span aria-hidden="true">•</span>
 
-                                <p>
-                                    <strong>Tipo:</strong>
-                                    {{ result.media_type }}
-                                </p>
+                            <span>
+                                {{ result.media_type | title }}
+                            </span>
+                        </div>
 
-                                {% if result.local_id is not none %}
-                                    <span class="saved-badge">
-                                        Salvo no catálogo
-                                    </span>
-                                {% else %}
-                                    <span class="api-badge">
-                                        Resultado da OMDb
-                                    </span>
-                                {% endif %}
-                            </div>
-                        </article>
+                        <p class="search-result-description">
+                            {% if result.local_id is not none %}
+                                Abrir filme salvo no catálogo
+                            {% else %}
+                                Ver informações e adicionar ao catálogo
+                            {% endif %}
+                        </p>
+                    </div>
+                    <span
+                        class="search-result-arrow"
+                        aria-hidden="true"
+                    >
+                        →
+                    </span>
+                </article>
+
+                {% if details_url %}
                     </a>
-                {% endfor %}
-            </section>
-        {% else %}
-            {% if not error %}
-                <p>Nenhum resultado encontrado.</p>
-            {% endif %}
-        {% endif %}
+                {% endif %}
+            {% endfor %}
+        </section>
+    {% elif not error %}
+        <p>Nenhum resultado encontrado.</p>
+    {% endif %}
 
-        <a href="/">Voltar para o catálogo</a>
-    </main>
-</body>
-</html>
+    <a href="{{ url_for('home') }}">
+        Voltar para o catálogo
+    </a>
+{% endblock %}

@@ -91,6 +91,7 @@ def _build_external_ratings(data: dict) -> list[ExternalRating]:
         return []
 
     result: list[ExternalRating] = []
+    seen_sources: set[str] = set()
 
     for item in ratings:
         if not isinstance(item, dict):
@@ -100,6 +101,12 @@ def _build_external_ratings(data: dict) -> list[ExternalRating]:
         value = _clean_text(item.get("Value"))
         if source is None or value is None:
             continue
+
+        source_key = source.casefold()
+        if source_key in seen_sources:
+            continue
+
+        seen_sources.add(source_key)
 
         result.append(
             ExternalRating(
@@ -129,11 +136,14 @@ def map_movie_from_omdb(data: dict) -> Movie:
 
     title = _clean_text(data.get("Title"))
     year = _parse_year(data.get("Year"))
+    imdb_id = _clean_text(data.get("imdbID"))
 
     if title is None:
         raise ValueError("A API não retornou o título do filme.")
     if year is None:
         raise ValueError("A API não retornou um ano válido.")
+    if imdb_id is None:
+        raise ValueError("A API não retornou um IMDb ID válido.")
 
     return Movie(
         title=title,
@@ -142,7 +152,7 @@ def map_movie_from_omdb(data: dict) -> Movie:
         director=_clean_text(data.get("Director")),
         plot=_clean_text(data.get("Plot")) or "Não informado",
         media_type="movie",
-        imdb_id=_clean_text(data.get("imdbID")),
+        imdb_id=imdb_id,
         poster=_clean_text(data.get("Poster")),
         awards=_clean_text(data.get("Awards")),
         runtime_minutes=_parse_integer(data.get("Runtime")),

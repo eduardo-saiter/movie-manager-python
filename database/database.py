@@ -9,8 +9,10 @@ def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(
         DB_PATH,
         check_same_thread=False,
+        timeout=10,
     )
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 5000")
     return conn
 
 
@@ -29,9 +31,9 @@ def initialize_database(conn: sqlite3.Connection) -> None:
                 CHECK (media_type IN ('movie', 'series', 'episode')),
 
             title TEXT NOT NULL COLLATE NOCASE,
-            year INTEGER,
-            genre TEXT,
-            plot TEXT,
+            year INTEGER NOT NULL,
+            genre TEXT NOT NULL,
+            plot TEXT NOT NULL,
             poster TEXT,
             awards TEXT,
 

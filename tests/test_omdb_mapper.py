@@ -125,6 +125,11 @@ def test_map_movie_rejects_invalid_year() -> None:
         map_movie_from_omdb(full_movie_data(Year="N/A"))
 
 
+def test_map_movie_rejects_missing_imdb_id() -> None:
+    with pytest.raises(ValueError, match="IMDb ID válido"):
+        map_movie_from_omdb(full_movie_data(imdbID="N/A"))
+
+
 def test_map_movie_skips_invalid_external_ratings() -> None:
     movie = map_movie_from_omdb(
         full_movie_data(
@@ -138,6 +143,20 @@ def test_map_movie_skips_invalid_external_ratings() -> None:
 
     assert len(movie.external_ratings) == 1
     assert movie.external_ratings[0].source == "IMDb"
+
+
+def test_map_movie_ignores_duplicate_external_rating_sources() -> None:
+    movie = map_movie_from_omdb(
+        full_movie_data(
+            Ratings=[
+                {"Source": "IMDb", "Value": "8/10"},
+                {"Source": "imdb", "Value": "9/10"},
+            ]
+        )
+    )
+
+    assert len(movie.external_ratings) == 1
+    assert movie.external_ratings[0].value == "8/10"
 
 
 def test_map_search_results_returns_movies() -> None:

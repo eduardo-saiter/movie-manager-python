@@ -1,0 +1,12 @@
+[run]
+source = .
+omit =
+    tests/*
+    .venv/*
+    */__init__.py
+
+[report]
+show_missing = True
+skip_empty = True
+exclude_lines =
+    if __name__ == .__main__.:

@@ -29,6 +29,7 @@ The project was developed to practice object-oriented programming, layered archi
 - Validate empty searches, ratings, comments, and missing movie IDs
 - Display user-friendly error messages
 - Handle API timeouts, connection failures, and database errors
+- Keep the local catalog available even when the OMDb key is not configured
 - Use the same service and repository layers in both the web and terminal interfaces
 
 ---
@@ -131,6 +132,8 @@ movie-manager-python/
 ├── models/
 │   ├── media.py
 │   ├── movie.py
+│   ├── series.py
+│   ├── episode.py
 │   ├── media_search_result.py
 │   └── external_rating.py
 ├── repositories/
@@ -142,6 +145,7 @@ movie-manager-python/
 ├── static/
 │   └── styles.css
 ├── templates/
+│   ├── base.html
 │   ├── index.html
 │   ├── search_results.html
 │   └── details_data.html
@@ -153,12 +157,18 @@ movie-manager-python/
 │   ├── test_movie_api_client.py
 │   ├── test_movie_services.py
 │   ├── test_movies_repository.py
+│   ├── test_omdb_mapper.py
+│   ├── test_integration_flow.py
+│   ├── test_web_dependencies.py
 │   └── test_web_app.py
 ├── utils/
 │   └── exhibition.py
 ├── main.py
+├── errors.py
 ├── web_app.py
 ├── web_dependencies.py
+├── .env.example
+├── .coveragerc
 ├── requirements.txt
 ├── requirements-dev.txt
 ├── README.md
@@ -222,7 +232,13 @@ python -m pip install -r requirements-dev.txt
 
 ### 5. Configure the OMDb API key
 
-Create a `.env` file in the project root:
+Copy the example file:
+
+```bash
+cp .env.example .env
+```
+
+Then add your OMDb key:
 
 ```env
 OMDB_API_KEY=your_api_key
@@ -308,13 +324,13 @@ Examples:
 - operations using an unknown movie ID are rejected;
 - duplicate IMDb IDs are blocked by SQLite;
 - OMDb timeouts and connection errors are converted into user-friendly messages;
-- the web routes return appropriate HTTP status codes such as `400`, `404`, and `503`.
+- the web routes return appropriate HTTP status codes such as `400`, `404`, `409`, and `503`.
 
 ---
 
 ## 🧪 Tests
 
-The project currently contains **123 automated test cases**.
+The project currently contains **153 automated test cases**.
 
 Run the full suite:
 
@@ -331,8 +347,16 @@ pytest --collect-only -q
 Current result:
 
 ```text
-123 passed
+153 passed
 ```
+
+Run the suite with coverage:
+
+```bash
+pytest --cov=. --cov-report=term-missing -q
+```
+
+The current measured coverage is approximately **82%**.
 
 The tests cover:
 
@@ -376,7 +400,7 @@ Mocks and an isolated in-memory SQLite database keep the test suite independent 
 - [x] Create a dedicated movie-detail template
 - [x] Use the OMDb/IMDb identifier as the primary uniqueness rule
 - [ ] Add database migrations
-- [ ] Improve accessibility and responsive styling
+- [x] Improve accessibility and responsive styling
 - [ ] Add pagination and catalog filters
 - [ ] Add authentication before any public deployment
 

@@ -1,7 +1,9 @@
 import sqlite3
+from pathlib import Path
 
 import pytest
 
+import database.database as database_module
 from database.database import initialize_database
 
 
@@ -14,6 +16,21 @@ EXPECTED_TABLES = {
 }
 
 
+def test_connect_configures_sqlite_connection(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "test.db"
+    monkeypatch.setattr(database_module, "DB_PATH", database_path)
+
+    conn = database_module.connect()
+
+    assert database_path.exists()
+    assert conn.execute("PRAGMA foreign_keys").fetchone() == (1,)
+    assert conn.execute("PRAGMA busy_timeout").fetchone() == (5000,)
+    conn.close()
+
+
 def insert_media(
     conn: sqlite3.Connection,
     *,
@@ -22,8 +39,15 @@ def insert_media(
 ) -> int:
     cursor = conn.execute(
         """
-        INSERT INTO media (imdb_id, media_type, title, year)
-        VALUES (?, 'movie', ?, 2022)
+        INSERT INTO media (
+            imdb_id,
+            media_type,
+            title,
+            year,
+            genre,
+            plot
+        )
+        VALUES (?, 'movie', ?, 2022, 'Adventure', 'Plot')
         """,
         (imdb_id, title),
     )
@@ -82,6 +106,35 @@ def test_review_defaults_to_zero(conn: sqlite3.Connection) -> None:
     assert review == (0,)
 
 
+@pytest.mark.parametrize("column", ["year", "genre", "plot"])
+def test_required_movie_fields_reject_null(
+    conn: sqlite3.Connection,
+    column: str,
+) -> None:
+    values = {
+        "year": (None, "Drama", "Plot"),
+        "genre": (2020, None, "Plot"),
+        "plot": (2020, "Drama", None),
+    }
+    year, genre, plot = values[column]
+
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(
+            """
+            INSERT INTO media (
+                imdb_id,
+                media_type,
+                title,
+                year,
+                genre,
+                plot
+            )
+            VALUES (?, 'movie', 'Invalid', ?, ?, ?)
+            """,
+            (f"tt-null-{column}", year, genre, plot),
+        )
+
+
 def test_review_must_be_between_zero_and_five(
     conn: sqlite3.Connection,
 ) -> None:
@@ -89,9 +142,15 @@ def test_review_must_be_between_zero_and_five(
         conn.execute(
             """
             INSERT INTO media (
-                imdb_id, media_type, title, year, avaliation
+                imdb_id,
+                media_type,
+                title,
+                year,
+                genre,
+                plot,
+                avaliation
             )
-            VALUES ('tt1', 'movie', 'Invalid', 2020, 6)
+            VALUES ('tt1', 'movie', 'Invalid', 2020, 'Drama', 'Plot', 6)
             """
         )
 

@@ -3,6 +3,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 
+from errors import MovieAlreadySavedError, MovieNotFoundError
 from services.movie_services import MovieServices
 from web_dependencies import get_movie_service, templates
 
@@ -44,7 +45,7 @@ def home(
 @router.get("/search", name="search_movie_page")
 def search_movie_page(
     request: Request,
-    title: str,
+    title: str = "",
     service: MovieServices = Depends(get_movie_service),
 ):
     try:
@@ -87,19 +88,27 @@ def search_movie_page(
 @router.post("/movies/save", name="save_movie_page")
 def save_movie_page(
     request: Request,
-    imdb_id: str = Form(...),
+    imdb_id: str = Form(""),
     service: MovieServices = Depends(get_movie_service),
 ):
     try:
         movie = service.search_api_by_imdb_id(imdb_id)
         service.save_movie(movie)
-    except (ValueError, ConnectionError, sqlite3.Error) as error:
+    except (
+        MovieAlreadySavedError,
+        ValueError,
+        ConnectionError,
+        sqlite3.Error,
+    ) as error:
         if isinstance(error, sqlite3.Error):
             error_message = _DATABASE_ERROR_MESSAGE
             status_code = 503
         elif isinstance(error, ConnectionError):
             error_message = str(error)
             status_code = 503
+        elif isinstance(error, MovieAlreadySavedError):
+            error_message = str(error)
+            status_code = 409
         else:
             error_message = str(error)
             status_code = 400
@@ -116,7 +125,12 @@ def save_movie_page(
         )
 
     return RedirectResponse(
-        url=f"/movies/{movie.id}",
+        url=str(
+            request.app.url_path_for(
+                "search_movie_id_page",
+                movie_id=movie.id,
+            )
+        ),
         status_code=303,
     )
 
@@ -128,11 +142,22 @@ def save_movie_page(
 def update_rating_page(
     request: Request,
     movie_id: int,
-    rating: int = Form(...),
+    rating: str = Form(""),
     service: MovieServices = Depends(get_movie_service),
 ):
     try:
         service.new_review_movie(movie_id, rating)
+    except MovieNotFoundError as error:
+        return templates.TemplateResponse(
+            request=request,
+            name="details_data.html",
+            context={
+                "page_title": "Filme não encontrado",
+                "movie": None,
+                "error": str(error),
+            },
+            status_code=404,
+        )
     except ValueError as error:
         try:
             movie = service.search_movie_by_id(movie_id)
@@ -162,7 +187,12 @@ def update_rating_page(
         )
 
     return RedirectResponse(
-        url=f"/movies/{movie_id}",
+        url=str(
+            request.app.url_path_for(
+                "search_movie_id_page",
+                movie_id=movie_id,
+            )
+        ),
         status_code=303,
     )
 
@@ -174,11 +204,22 @@ def update_rating_page(
 def update_comment_page(
     request: Request,
     movie_id: int,
-    comment: str = Form(...),
+    comment: str = Form(""),
     service: MovieServices = Depends(get_movie_service),
 ):
     try:
         service.new_comment_movie(movie_id, comment)
+    except MovieNotFoundError as error:
+        return templates.TemplateResponse(
+            request=request,
+            name="details_data.html",
+            context={
+                "page_title": "Filme não encontrado",
+                "movie": None,
+                "error": str(error),
+            },
+            status_code=404,
+        )
     except ValueError as error:
         try:
             movie = service.search_movie_by_id(movie_id)
@@ -208,7 +249,12 @@ def update_comment_page(
         )
 
     return RedirectResponse(
-        url=f"/movies/{movie_id}",
+        url=str(
+            request.app.url_path_for(
+                "search_movie_id_page",
+                movie_id=movie_id,
+            )
+        ),
         status_code=303,
     )
 
@@ -224,6 +270,17 @@ def delete_movie_page(
 ):
     try:
         service.delete_saved_movie(movie_id)
+    except MovieNotFoundError as error:
+        return templates.TemplateResponse(
+            request=request,
+            name="details_data.html",
+            context={
+                "page_title": "Detalhes do filme",
+                "movie": None,
+                "error": str(error),
+            },
+            status_code=404,
+        )
     except ValueError as error:
         return templates.TemplateResponse(
             request=request,
@@ -247,7 +304,10 @@ def delete_movie_page(
             status_code=503,
         )
 
-    return RedirectResponse(url="/", status_code=303)
+    return RedirectResponse(
+        url=str(request.app.url_path_for("home")),
+        status_code=303,
+    )
 
 
 @router.get(

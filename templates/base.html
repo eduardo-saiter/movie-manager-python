@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block title %}{{ page_title or title or "Movie Manager" }}{% endblock %}</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='/styles.css') }}"
+    >
+</head>
+<body>
+    <header class="site-header">
+        <div class="site-header-content">
+            <a
+                class="site-brand"
+                href="{{ url_for('home') }}"
+            >
+                <span
+                    class="site-brand-icon"
+                    aria-hidden="true"
+                >
+                    ▶
+                </span>
+
+                <span>Movie Manager</span>
+            </a>
+
+            <nav
+                class="site-navigation"
+                aria-label="Navegação principal"
+            >
+                <a href="{{ url_for('home') }}">
+                    Meu catálogo
+                </a>
+            </nav>
+        </div>
+    </header>
+    
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

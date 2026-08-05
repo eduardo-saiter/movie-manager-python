@@ -3,6 +3,11 @@ import sqlite3
 import requests
 
 from clients.movie_api_client import MovieApiClient
+from errors import (
+    MovieAlreadySavedError,
+    MovieApiConfigurationError,
+    MovieNotFoundError,
+)
 from mappers.omdb_mapper import (
     map_movie_from_omdb,
     map_search_results_from_omdb,
@@ -38,6 +43,10 @@ class MovieServices:
 
         try:
             data = self.api_client.search_api(search)
+        except MovieApiConfigurationError as error:
+            raise ConnectionError(
+                "A chave da OMDb não foi configurada."
+            ) from error
         except requests.Timeout as error:
             raise ConnectionError(
                 "A API demorou demais para responder."
@@ -65,6 +74,10 @@ class MovieServices:
 
         try:
             data = self.api_client.search_many(search)
+        except MovieApiConfigurationError as error:
+            raise ConnectionError(
+                "A chave da OMDb não foi configurada."
+            ) from error
         except requests.Timeout as error:
             raise ConnectionError(
                 "A API demorou demais para responder."
@@ -142,6 +155,10 @@ class MovieServices:
 
         try:
             data = self.api_client.search_by_imdb_id(normalized_id)
+        except MovieApiConfigurationError as error:
+            raise ConnectionError(
+                "A chave da OMDb não foi configurada."
+            ) from error
         except requests.Timeout as error:
             raise ConnectionError(
                 "A API demorou demais para responder."
@@ -158,12 +175,45 @@ class MovieServices:
         return map_movie_from_omdb(data)
 
     def save_movie(self, movie: Movie) -> None:
+        movie.title = movie.title.strip()
+        if not movie.title:
+            raise ValueError("O título não pode ser vazio.")
+
+        if movie.imdb_id is None or not movie.imdb_id.strip():
+            raise ValueError(
+                "Não é possível salvar um filme sem IMDb ID."
+            )
+        movie.imdb_id = movie.imdb_id.strip()
+
+        if not 0 <= movie.avaliation <= 5:
+            raise ValueError(
+                "A avaliação deve estar entre 0 e 5."
+            )
+
+        if movie.comment is not None:
+            comment = movie.comment.strip()
+            if len(comment) > 500:
+                raise ValueError(
+                    "O comentário deve ter no máximo 500 caracteres."
+                )
+            movie.comment = comment or None
+
         try:
             self.repository.save_movie(movie)
         except sqlite3.IntegrityError as error:
-            raise ValueError(
-                "Este filme já está salvo no catálogo."
-            ) from error
+            error_message = str(error).casefold()
+
+            duplicate_imdb_id = (
+                "media.imdb_id" in error_message
+                or "ux_media_imdb_id_nocase" in error_message
+            )
+
+            if duplicate_imdb_id:
+                raise MovieAlreadySavedError(
+                    "Este filme já está salvo no catálogo."
+                ) from error
+
+            raise
 
     def list_saved_movies(self) -> list[Movie]:
         return self.repository.list_movies()
@@ -188,7 +238,9 @@ class MovieServices:
 
         updated = self.repository.update_review(review, movie_id)
         if not updated:
-            raise ValueError("O filme escolhido não foi encontrado.")
+            raise MovieNotFoundError(
+                "O filme escolhido não foi encontrado."
+            )
 
     def new_comment_movie(
         self,
@@ -206,9 +258,13 @@ class MovieServices:
 
         updated = self.repository.update_comment(comment, movie_id)
         if not updated:
-            raise ValueError("O filme escolhido não foi encontrado.")
+            raise MovieNotFoundError(
+                "O filme escolhido não foi encontrado."
+            )
 
     def delete_saved_movie(self, movie_id: int) -> None:
         deleted = self.repository.delete_movie(movie_id)
         if not deleted:
-            raise ValueError("O filme escolhido não foi encontrado.")
+            raise MovieNotFoundError(
+                "O filme escolhido não foi encontrado."
+            )
