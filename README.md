@@ -2,42 +2,40 @@
 
 [![Tests](https://github.com/eduardo-saiter/movie-manager-python/actions/workflows/tests.yml/badge.svg)](https://github.com/eduardo-saiter/movie-manager-python/actions/workflows/tests.yml)
 
-Movie Manager is a Python application for searching, saving, rating, commenting on, and organizing movies.
+Movie Manager is a local-first Python application for searching movies through the OMDb API and organizing a personal SQLite catalog.
 
-The project provides two interfaces over the same application logic:
+It provides two interfaces over the same application logic:
 
-- a **local web application** built with FastAPI, Jinja2, HTML, and CSS;
-- a **command-line interface** for terminal use.
+- a web interface built with FastAPI, Jinja2, HTML, and CSS;
+- a command-line interface for terminal use.
 
-When a title is searched, the application combines partial matches from the local SQLite catalog with the OMDb search results. Items already saved are identified by their IMDb ID and open the local detail page; external results open an OMDb detail page and can then be added to the catalog.
-
-The project was developed to practice object-oriented programming, layered architecture, external API consumption, SQLite persistence, validation, automated testing, and web development 
-with Python.
+Users can search partial titles, combine local and OMDb results, save movies, rate them, write personal comments, view detailed metadata, and remove items from the catalog.
 
 ---
 
-## 📑 Contents
+## Contents
 
-- [Screenshots](#-screenshots)
-- [Features](#-features)
-- [Architecture](#-architecture)
-- [Technologies](#-technologies)
-- [Project structure](#-project-structure)
-- [Installation](#-installation)
-- [Environment variables](#-environment-variables)
-- [Running the application](#-running-the-application)
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Search flow](#search-flow)
+- [Architecture](#architecture)
+- [Technologies](#technologies)
+- [Project structure](#project-structure)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Running the application](#running-the-application)
   - [Web interface](#web-interface)
   - [Command-line interface](#command-line-interface)
-- [Routes](#-routes)
-- [Tests](#-tests)
-- [Validations and error handling](#-validations-and-error-handling)
-- [Known limitations](#-known-limitations)
-- [Possible next steps](#️-possible-next-steps)
-- [License](#-license)
+- [Main web routes](#main-web-routes)
+- [Validation and error handling](#validation-and-error-handling)
+- [Tests](#tests)
+- [Concepts practiced](#concepts-practiced)
+- [Roadmap](#roadmap)
+- [License](#license)
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 ### Catalog
 
@@ -50,32 +48,46 @@ with Python.
 ### Movie details
 
 ![Movie Manager movie details](docs/images/movie_details_01.png)
-![Movie Manager movie details](docs/images/movie_details_02.png)
+
+![Movie Manager movie details continued](docs/images/movie_details_02.png)
 
 ---
 
-## ✨ Features
+## Features
 
-- Search partial movie titles in the local catalog
-- Combine local matches with OMDb search results
-- Detect OMDb results that are already saved and open their local record
-- Save API results in SQLite
-- Display movie posters
-- List saved movies in a responsive card grid
-- Open movie details by clicking the poster
+### Catalog
+
+- Store movies in a local SQLite database
+- Display saved titles in a responsive card grid
+- Open movie details by clicking a poster or title
 - Rate movies from 0 to 5 stars
 - Add and update personal comments
 - Delete movies from the catalog
-- Prevent duplicate IMDb IDs with a case-insensitive database `UNIQUE` constraint
+- Prevent duplicate IMDb IDs with a case-insensitive `UNIQUE` constraint
+
+### Search and OMDb integration
+
+- Search partial titles in the local catalog
+- Search external titles through the OMDb API
+- Merge local and external results
+- Remove duplicate results using the IMDb ID
+- Redirect saved results to their local detail page
+- Open unsaved results on an OMDb detail page
+- Save external results to the local catalog
+- Display posters, release information, runtime, ratings, votes, awards, and other metadata
+
+### Reliability
+
 - Validate empty searches, ratings, comments, and missing movie IDs
+- Handle API timeouts, connection failures, and invalid responses
 - Display user-friendly error messages
-- Handle API timeouts, connection failures, and database errors
-- Keep the local catalog available even when the OMDb key is not configured
-- Use the same service and repository layers in both the web and terminal interfaces
+- Return appropriate HTTP status codes
+- Keep the local catalog available when the OMDb key is not configured
+- Reuse the same service and repository layers in the web and terminal interfaces
 
 ---
 
-## 🔎 Search flow
+## Search flow
 
 ```text
 User searches for part of a title
@@ -96,9 +108,9 @@ Saved item     External item
 
 ---
 
-## 🧱 Architecture
+## Architecture
 
-The project separates HTTP routes, application rules, persistence, API communication, and presentation.
+The project uses a layered architecture to separate HTTP handling, application rules, API communication, persistence, and presentation.
 
 ```text
 Browser
@@ -108,7 +120,7 @@ FastAPI application
 web_app.py
    │
    ▼
-APIRouter / route controllers
+Router / controllers
 routers/movie_router.py
    │
    ▼
@@ -118,10 +130,10 @@ MovieServices
    └────────► MovieRepository ────► SQLite
                      │
                      ▼
-                   Movie
+                   Models
 ```
 
-The terminal interface also uses the same service layer:
+The command-line interface uses the same application layer:
 
 ```text
 main.py ─────► MovieServices ─────► Repository / API client
@@ -132,42 +144,54 @@ main.py ─────► MovieServices ─────► Repository / API cli
 | Component | Responsibility |
 |---|---|
 | `web_app.py` | Creates and configures the FastAPI application |
-| `routers/movie_router.py` | Defines web routes and handles HTTP requests and responses |
-| `web_dependencies.py` | Creates the templates, database connection, repository, API client, and service |
+| `routers/movie_router.py` | Defines routes and handles HTTP requests and responses |
+| `web_dependencies.py` | Creates templates, database connections, repositories, API clients, and services |
 | `services/movie_services.py` | Applies validation and coordinates application rules |
-| `repositories/movies_repository.py` | Performs SQLite CRUD operations |
+| `repositories/movies_repository.py` | Performs SQLite persistence operations |
 | `clients/movie_api_client.py` | Communicates with the OMDb API |
-| `database/database.py` | Creates the SQLite connection and initializes the schema |
-| `models/` | Defines `Media`, `Movie`, future series/episode models, search results, and external ratings |
-| `mappers/omdb_mapper.py` | Converts raw OMDb payloads into application models |
+| `database/database.py` | Creates SQLite connections and initializes the schema |
+| `models/` | Defines media, movie, search-result, series, episode, and external-rating models |
+| `mappers/omdb_mapper.py` | Converts OMDb payloads into application models |
 | `templates/` | Contains the Jinja2 HTML pages |
-| `static/` | Contains the CSS styles |
-| `utils/exhibition.py` | Formats output for the terminal interface |
+| `static/` | Contains the application styles |
+| `utils/exhibition.py` | Formats output for the command-line interface |
 
 ---
 
-## 🛠️ Technologies
+## Technologies
 
-- Python 3.10+
-- FastAPI
-- Uvicorn
-- Jinja2
-- HTML and CSS
-- SQLite
-- Requests
-- python-dotenv
-- Pytest
+| Area | Technology |
+|---|---|
+| Language | Python 3.10+ |
+| Web framework | FastAPI |
+| Development server | Uvicorn |
+| Templates | Jinja2 |
+| Front end | HTML and CSS |
+| Database | SQLite |
+| HTTP client | Requests |
+| Environment variables | python-dotenv |
+| Testing | Pytest and pytest-cov |
+| Continuous integration | GitHub Actions |
 
 ---
 
-## 📁 Project structure
+## Project structure
 
 ```text
 movie-manager-python/
+├── .github/
+│   └── workflows/
+│       └── tests.yml
 ├── clients/
 │   └── movie_api_client.py
 ├── database/
 │   └── database.py
+├── docs/
+│   └── images/
+│       ├── catalog.png
+│       ├── search_results.png
+│       ├── movie_details_01.png
+│       └── movie_details_02.png
 ├── mappers/
 │   └── omdb_mapper.py
 ├── models/
@@ -194,31 +218,31 @@ movie-manager-python/
 │   ├── conftest.py
 │   ├── test_database.py
 │   ├── test_exhibition.py
+│   ├── test_integration_flow.py
 │   ├── test_main.py
 │   ├── test_movie_api_client.py
 │   ├── test_movie_services.py
 │   ├── test_movies_repository.py
 │   ├── test_omdb_mapper.py
-│   ├── test_integration_flow.py
-│   ├── test_web_dependencies.py
-│   └── test_web_app.py
+│   ├── test_web_app.py
+│   └── test_web_dependencies.py
 ├── utils/
 │   └── exhibition.py
-├── main.py
-├── errors.py
-├── web_app.py
-├── web_dependencies.py
-├── .env.example
 ├── .coveragerc
-├── requirements.txt
-├── requirements-dev.txt
+├── .env.example
+├── errors.py
+├── LICENSE
+├── main.py
 ├── README.md
-└── LICENSE
+├── requirements-dev.txt
+├── requirements.txt
+├── web_app.py
+└── web_dependencies.py
 ```
 
 ---
 
-## 🚀 Installation
+## Installation
 
 ### 1. Clone the repository
 
@@ -244,7 +268,7 @@ python3 -m venv .venv
 
 ### 3. Activate the virtual environment
 
-Linux/macOS:
+Linux or macOS:
 
 ```bash
 source .venv/bin/activate
@@ -256,7 +280,7 @@ Windows PowerShell:
 .venv\Scripts\Activate.ps1
 ```
 
-### 4. Install the dependencies
+### 4. Install dependencies
 
 Application dependencies:
 
@@ -271,15 +295,17 @@ Development and test dependencies:
 python -m pip install -r requirements-dev.txt
 ```
 
-### 5. Configure the OMDb API key
+---
 
-Copy the example file:
+## Configuration
+
+Copy the environment example:
 
 ```bash
 cp .env.example .env
 ```
 
-Then add your OMDb key:
+Add your OMDb API key:
 
 ```env
 OMDB_API_KEY=your_api_key
@@ -287,24 +313,28 @@ OMDB_API_KEY=your_api_key
 
 The `.env` file is ignored by Git and must not be committed.
 
+The local catalog remains available without an API key, but external OMDb searches require one.
+
 ---
 
-## 🌐 Run the web application
+## Running the application
 
-Start the development server:
+### Web interface
+
+Start the FastAPI development server:
 
 ```bash
 python -m fastapi dev web_app.py
 ```
 
-Open the application in the browser:
+Open:
 
 ```text
 Application: http://127.0.0.1:8000
 API docs:    http://127.0.0.1:8000/docs
 ```
 
-### Access from another device on the same local network
+#### Access from another device on the same network
 
 Start Uvicorn on all network interfaces:
 
@@ -318,17 +348,15 @@ Find the computer's local IP address on Linux:
 hostname -I
 ```
 
-Then open the following address on another device connected to the same network:
+Then open:
 
 ```text
 http://YOUR_LOCAL_IP:8000
 ```
 
-The current application has no authentication and is intended for local development. Do not expose it directly to an untrusted public network.
+The application has no authentication and is intended for local development. Do not expose it directly to an untrusted public network.
 
----
-
-## 💻 Run the command-line application
+### Command-line interface
 
 ```bash
 python main.py
@@ -338,7 +366,7 @@ The SQLite database is created automatically inside the `database/` directory.
 
 ---
 
-## 🛣️ Main web routes
+## Main web routes
 
 | Method | Route | Purpose |
 |---|---|---|
@@ -353,66 +381,69 @@ The SQLite database is created automatically inside the `database/` directory.
 
 ---
 
-## ✅ Validation and error handling
+## Validation and error handling
 
 The service layer validates application data before calling the repository.
 
 Examples:
 
-- movie titles cannot be empty;
+- titles cannot be empty;
 - ratings must be integers between 0 and 5;
 - comments cannot be empty or longer than 500 characters;
-- operations using an unknown movie ID are rejected;
+- operations with unknown movie IDs are rejected;
 - duplicate IMDb IDs are blocked by SQLite;
-- OMDb timeouts and connection errors are converted into user-friendly messages;
-- the web routes return appropriate HTTP status codes such as `400`, `404`, `409`, and `503`.
+- OMDb timeouts and connection failures become user-friendly messages;
+- database errors are handled without exposing technical details to the user;
+- web routes return status codes such as `400`, `404`, `409`, and `503`.
 
 ---
 
-## 🧪 Tests
+## Tests
 
-The project currently contains **153 automated test cases**.
+The project contains **153 automated tests** covering the main application layers and user flows.
 
-Run the full suite:
+Run the complete suite:
 
 ```bash
 pytest -q
 ```
 
-Check which tests will be collected:
-
-```bash
-pytest --collect-only -q
-```
-
-Current result:
-
-```text
-153 passed
-```
-
-Run the suite with coverage:
+Run with coverage:
 
 ```bash
 pytest --cov=. --cov-report=term-missing -q
 ```
 
-The current measured coverage is approximately **82%**.
+Current local result:
 
-The tests cover:
+```text
+153 passed
+```
 
-- database initialization and constraints;
+Current measured coverage:
+
+```text
+approximately 82%
+```
+
+The suite covers:
+
+- database initialization, constraints, and foreign keys;
 - OMDb client behavior without real network requests;
-- SQLite repository operations using an in-memory database;
+- SQLite repository operations using isolated in-memory databases;
 - service rules and validation;
+- mapper behavior;
 - web routes, forms, redirects, templates, and HTTP status codes;
+- complete integration flows;
 - terminal output and shutdown behavior.
 
-Mocks and an isolated in-memory SQLite database keep the test suite independent from the real OMDb API and the local application database.
+Mocks and in-memory SQLite databases keep the suite independent from the real OMDb API and the local application database.
+
+The GitHub Actions workflow runs the tests automatically on pushes and pull requests targeting `main`.
 
 ---
 
-## 📚 Concepts practiced
+## Concepts practiced
 
 - Object-oriented programming
 - Dataclasses
@@ -421,32 +452,37 @@ Mocks and an isolated in-memory SQLite database keep the test suite independent 
 - Separation of concerns
 - Repository pattern
 - Service layer
-- Router/controller organization
-- Dependency composition
+- Router and controller organization
+- Dependency injection
 - REST API consumption
 - HTTP methods and status codes
-- FastAPI forms and path/query parameters
+- FastAPI forms, query parameters, and path parameters
 - Jinja2 templates
-- HTML and CSS
+- Responsive HTML and CSS
 - Environment variables
 - SQLite CRUD operations
+- Transactions and foreign keys
 - Validation and exception handling
 - Pytest fixtures, mocks, monkeypatch, and parametrization
+- Continuous integration with GitHub Actions
 
 ---
 
-## 🗺️ Possible next steps
+## Roadmap
 
-- [x] Use FastAPI `Depends()` for dependency injection in the routers
+- [x] Use FastAPI `Depends()` for dependency injection
 - [x] Create a dedicated movie-detail template
-- [x] Use the OMDb/IMDb identifier as the primary uniqueness rule
-- [ ] Add database migrations
+- [x] Use the IMDb identifier as the primary uniqueness rule
+- [x] Add automated tests with GitHub Actions
 - [x] Improve accessibility and responsive styling
+- [x] Add screenshots to the repository
+- [ ] Add database migrations
 - [ ] Add pagination and catalog filters
+- [ ] Complete series and episode workflows
 - [ ] Add authentication before any public deployment
 
 ---
 
-## 📄 License
+## License
 
 This project is distributed under the terms described in the [LICENSE](LICENSE) file.
