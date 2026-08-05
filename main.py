@@ -57,7 +57,7 @@ def main() -> None:
                                         print("Review inválida.")
                                     else:
                                         movie.avaliation = user_review
-                                except:
+                                except ValueError:
                                     print("Insira um número válido")
 
                                 print("\nDigite seu comentário: ")

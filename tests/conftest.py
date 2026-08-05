@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sqlite3
 from collections.abc import Callable, Iterator
+from datetime import date
 from unittest.mock import Mock
 
 import pytest
@@ -10,11 +11,12 @@ from fastapi.testclient import TestClient
 
 from clients.movie_api_client import MovieApiClient
 from database.database import initialize_database
+from models.external_rating import ExternalRating
+from models.media_search_result import MediaSearchResult
 from models.movie import Movie
 from repositories.movies_repository import MovieRepository
 from services.movie_services import MovieServices
 
-# Garante que importar web_app não dependa do .env pessoal do desenvolvedor.
 os.environ.setdefault("OMDB_API_KEY", "test-api-key")
 
 
@@ -54,17 +56,55 @@ def movie_factory() -> Callable[..., Movie]:
     def factory(**overrides: object) -> Movie:
         data: dict[str, object] = {
             "title": "Interstellar",
-            "year": "2014",
+            "year": 2014,
             "genre": "Adventure, Drama, Sci-Fi",
             "director": "Christopher Nolan",
             "plot": "Exploradores atravessam um buraco de minhoca.",
+            "media_type": "movie",
+            "imdb_id": "tt0816692",
             "poster": "https://example.com/interstellar.jpg",
+            "awards": "1 Oscar",
+            "runtime_minutes": 169,
+            "released_at": date(2014, 11, 7),
+            "imdb_rating": 8.7,
+            "imdb_votes": 2_400_000,
+            "metascore": 74,
+            "box_office": 188_020_017,
             "comment": None,
             "id": None,
             "avaliation": 0,
+            "external_ratings": [
+                ExternalRating(
+                    source="Internet Movie Database",
+                    value="8.7/10",
+                    normalized_score=87.0,
+                ),
+                ExternalRating(
+                    source="Rotten Tomatoes",
+                    value="73%",
+                    normalized_score=73.0,
+                ),
+            ],
         }
         data.update(overrides)
         return Movie(**data)  # type: ignore[arg-type]
+
+    return factory
+
+
+@pytest.fixture
+def search_result_factory() -> Callable[..., MediaSearchResult]:
+    def factory(**overrides: object) -> MediaSearchResult:
+        data: dict[str, object] = {
+            "title": "Interstellar",
+            "year": "2014",
+            "media_type": "movie",
+            "imdb_id": "tt0816692",
+            "poster": "https://example.com/interstellar.jpg",
+            "local_id": None,
+        }
+        data.update(overrides)
+        return MediaSearchResult(**data)  # type: ignore[arg-type]
 
     return factory
 
@@ -81,9 +121,7 @@ def client(
     from web_app import app
     from web_dependencies import get_movie_service
 
-    app.dependency_overrides[get_movie_service] = (
-        lambda: web_service_mock
-    )
+    app.dependency_overrides[get_movie_service] = lambda: web_service_mock
 
     with TestClient(app) as test_client:
         yield test_client

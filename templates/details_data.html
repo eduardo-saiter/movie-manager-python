@@ -3,45 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> {{page_title}} </title>
+    <title>{{ page_title }}</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
 </head>
 <body>
-     <main class="container">
+    <main class="container">
         <h1>{{ page_title }}</h1>
 
         {% if error %}
-            <p class="error-message">
-                {{ error }}
-            </p>
+            <p class="error-message">{{ error }}</p>
         {% endif %}
 
         {% if movie %}
             <article class="movie-card">
                 {% if movie.poster %}
-                        <img
-                            class="movie-poster"
-                            src="{{ movie.poster }}"
-                            alt="Pôster de {{ movie.title }}"
-                        >
+                    <img
+                        class="movie-poster"
+                        src="{{ movie.poster }}"
+                        alt="Pôster de {{ movie.title }}"
+                    >
                 {% endif %}
+
                 <div class="movie-information">
                     <h2>{{ movie.title }}</h2>
 
                     <p><strong>Ano:</strong> {{ movie.year }}</p>
                     <p><strong>Gênero:</strong> {{ movie.genre }}</p>
-                    <p><strong>Diretor</strong>: {{ movie.director }}</p>
+                    <p><strong>Diretor:</strong> {{ movie.director or "Não informado" }}</p>
                     <p><strong>Sinopse:</strong> {{ movie.plot }}</p>
                     <p><strong>Lançamento:</strong> {{ movie.released_at or "Não informado" }}</p>
-                    <p><strong>Duração:</strong> {{ movie.runtime_minutes or "Não informado" }} min</p>
-                    <p><strong>IMDb:</strong> {{ movie.imdb_rating or "N/A" }}</p>
-                    <p><strong>Votos:</strong> {{ movie.imdb_votes or "N/A" }}</p>
-                    <p><strong>Metascore:</strong> {{ movie.metascore or "N/A" }}</p>
+                    <p>
+                        <strong>Duração:</strong>
+                        {% if movie.runtime_minutes is not none %}
+                            {{ movie.runtime_minutes }} min
+                        {% else %}
+                            Não informado
+                        {% endif %}
+                    </p>
+                    <p>
+                        <strong>IMDb:</strong>
+                        {{ movie.imdb_rating if movie.imdb_rating is not none else "N/A" }}
+                    </p>
+                    <p>
+                        <strong>Votos:</strong>
+                        {{ movie.imdb_votes if movie.imdb_votes is not none else "N/A" }}
+                    </p>
+                    <p>
+                        <strong>Metascore:</strong>
+                        {{ movie.metascore if movie.metascore is not none else "N/A" }}
+                    </p>
                     <p><strong>Prêmios:</strong> {{ movie.awards or "Não informado" }}</p>
+
                     {% if movie.external_ratings %}
                         <section class="external-ratings">
                             <h3>Avaliações externas</h3>
-                        
+
                             {% for rating in movie.external_ratings %}
                                 <p>
                                     <strong>{{ rating.source }}:</strong>
@@ -50,48 +66,50 @@
                             {% endfor %}
                         </section>
                     {% endif %}
+
                     <p>
                         <strong>Bilheteria:</strong>
-                        {{ movie.box_office or "Não informado" }}
+                        {{ movie.box_office if movie.box_office is not none else "Não informado" }}
                     </p>
-                    
-                    </div>
+                </div>
+
                 {% if movie.id is none %}
                     <p>Este filme não foi salvo localmente.</p>
-                    <form action="/movies/save" method="post">
 
-                        <input
-                            type="hidden"
-                            name="imdb_id"
-                            value="{{ movie.imdb_id }}"
+                    {% if movie.imdb_id %}
+                        <form
+                            action="{{ url_for('save_movie_page') }}"
+                            method="post"
                         >
+                            <input
+                                type="hidden"
+                                name="imdb_id"
+                                value="{{ movie.imdb_id }}"
+                            >
 
-                        <button type="submit">
-                            Adicionar ao catálogo
-                        </button>
-                    </form>
+                            <button type="submit">
+                                Adicionar ao catálogo
+                            </button>
+                        </form>
+                    {% else %}
+                        <p>Não foi possível identificar este filme na OMDb.</p>
+                    {% endif %}
                 {% else %}
                     <div class="editable-field">
                         <p>
                             <strong>Avaliação:</strong>
                             {{ "⭐" * movie.avaliation }}
                             {{ "☆" * (5 - movie.avaliation) }}
-
                             ({{ movie.avaliation }}/5)
                         </p>
-                    
+
                         <details class="edit-control">
                             <summary title="Editar avaliação">✏️</summary>
-                        
+
                             <form
-                                action="/movies/{{ movie.id }}/update-rating"
+                                action="{{ url_for('update_rating_page', movie_id=movie.id) }}"
                                 method="post"
                             >
-                                <input
-                                    type="hidden"
-                                    name="title"
-                                    value="{{ movie.title }}"
-                                >
                                 <input
                                     type="number"
                                     name="rating"
@@ -100,43 +118,40 @@
                                     value="{{ movie.avaliation }}"
                                     required
                                 >
-                        
+
                                 <button type="submit">Salvar</button>
                             </form>
                         </details>
                     </div>
+
                     <div class="editable-field">
                         <p>
                             <strong>Comentário:</strong>
                             {{ movie.comment or "Nenhum comentário" }}
                         </p>
-                    
+
                         <details class="edit-control">
                             <summary title="Editar comentário">✏️</summary>
-                        
+
                             <form
-                                action="/movies/{{ movie.id }}/update-comment"
+                                action="{{ url_for('update_comment_page', movie_id=movie.id) }}"
                                 method="post"
                             >
-                                <input
-                                    type="hidden"
-                                    name="title"
-                                    value="{{ movie.title }}"
-                                >
                                 <textarea
                                     name="comment"
                                     rows="3"
                                     maxlength="500"
                                     required
                                 >{{ movie.comment or "" }}</textarea>
-                        
+
                                 <button type="submit">Salvar</button>
                             </form>
                         </details>
                     </div>
+
                     <details class="delete-control">
                         <summary title="Excluir filme">❌ Excluir filme ❌</summary>
-                                
+
                         <form
                             action="{{ url_for('delete_movie_page', movie_id=movie.id) }}"
                             method="post"
@@ -145,11 +160,12 @@
                                 Clique para confirmar
                             </button>
                         </form>
-                    </details>         
+                    </details>
                 {% endif %}
             </article>
         {% endif %}
-        <a href="/">
+
+        <a href="{{ url_for('home') }}">
             Voltar para o catálogo
         </a>
     </main>

@@ -55,7 +55,9 @@
                                 </a>
                                 {% endif %}
                                 <h1 class="movie-title">
-                                    {{movie.title}}
+                                    <a href="{{ url_for('search_movie_id_page', movie_id=movie.id) }}">
+                                        {{ movie.title }}
+                                    </a>
                                 </h1>
                                 <p class="movie-rating">
                                     {{ "⭐" * movie.avaliation }}

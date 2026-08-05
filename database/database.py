@@ -4,23 +4,27 @@ from pathlib import Path
 BASE_PATH = Path(__file__).resolve().parent
 DB_PATH = BASE_PATH / "movie_manager.db"
 
+
 def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(
         DB_PATH,
         check_same_thread=False,
     )
-
     conn.execute("PRAGMA foreign_keys = ON")
-
     return conn
 
+
 def initialize_database(conn: sqlite3.Connection) -> None:
+    # A conexão de produção já ativa as chaves estrangeiras em connect(),
+    # mas fazer isso aqui também mantém conexões de teste seguras.
+    conn.execute("PRAGMA foreign_keys = ON")
+
     conn.executescript(
         """
         CREATE TABLE IF NOT EXISTS media (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-            imdb_id TEXT UNIQUE,
+            imdb_id TEXT COLLATE NOCASE UNIQUE,
             media_type TEXT NOT NULL
                 CHECK (media_type IN ('movie', 'series', 'episode')),
 
@@ -48,6 +52,9 @@ def initialize_database(conn: sqlite3.Connection) -> None:
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_media_imdb_id_nocase
+        ON media (LOWER(imdb_id))
+        WHERE imdb_id IS NOT NULL;
 
         CREATE TABLE IF NOT EXISTS movie_details (
             media_id INTEGER PRIMARY KEY,
@@ -58,7 +65,6 @@ def initialize_database(conn: sqlite3.Connection) -> None:
                 ON DELETE CASCADE
         );
 
-
         CREATE TABLE IF NOT EXISTS series (
             media_id INTEGER PRIMARY KEY,
             total_seasons INTEGER,
@@ -67,7 +73,6 @@ def initialize_database(conn: sqlite3.Connection) -> None:
                 REFERENCES media(id)
                 ON DELETE CASCADE
         );
-
 
         CREATE TABLE IF NOT EXISTS episodes (
             media_id INTEGER PRIMARY KEY,
@@ -90,7 +95,6 @@ def initialize_database(conn: sqlite3.Connection) -> None:
             )
         );
 
-
         CREATE TABLE IF NOT EXISTS external_ratings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             media_id INTEGER NOT NULL,
@@ -104,7 +108,6 @@ def initialize_database(conn: sqlite3.Connection) -> None:
 
             UNIQUE (media_id, source)
         );
-
 
         CREATE TRIGGER IF NOT EXISTS update_media_timestamp
         AFTER UPDATE ON media

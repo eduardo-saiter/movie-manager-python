@@ -1,5 +1,4 @@
 import sqlite3
-from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
@@ -9,78 +8,57 @@ from web_dependencies import get_movie_service, templates
 
 router = APIRouter()
 
+_DATABASE_ERROR_MESSAGE = "Não foi possível acessar o banco de dados."
 
-@router.get("/")
-def home(request: Request, service: MovieServices = Depends(get_movie_service)):
+
+@router.get("/", name="home")
+def home(
+    request: Request,
+    service: MovieServices = Depends(get_movie_service),
+):
     try:
         movies = service.list_saved_movies()
-
-        return templates.TemplateResponse(
-            request=request,
-            name="index.html",
-            context={
-                "title": "Movie Manager",
-                "movies": movies
-            },
-        )
-    except (ValueError, sqlite3.Error) as error:
-        status_code = (503
-                       if isinstance(error, sqlite3.Error)
-                       else 400)
-
+    except sqlite3.Error:
         return templates.TemplateResponse(
             request=request,
             name="index.html",
             context={
                 "title": "Movie Manager",
                 "movies": [],
-                "error": str(error),
+                "error": _DATABASE_ERROR_MESSAGE,
             },
-            status_code=status_code
+            status_code=503,
         )
 
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={
+            "title": "Movie Manager",
+            "movies": movies,
+            "error": None,
+        },
+    )
 
-@router.get("/search")
+
+@router.get("/search", name="search_movie_page")
 def search_movie_page(
     request: Request,
     title: str,
-    service: MovieServices = Depends(
-        get_movie_service
-    ),
+    service: MovieServices = Depends(get_movie_service),
 ):
     try:
         results = service.search_results(title)
-
-        return templates.TemplateResponse(
-            request=request,
-            name="search_results.html",
-            context={
-                "page_title": "Resultados da pesquisa",
-                "search": title,
-                "results": results,
-                "error": None,
-            },
-        )
-
-    except (
-        ValueError,
-        ConnectionError,
-        sqlite3.Error,
-    ) as error:
-        status_code = (
-            503
-            if isinstance(
-                error,
-                (ConnectionError, sqlite3.Error),
-            )
-            else 400
-        )
-
-        error_message = (
-            "Não foi possível acessar o banco de dados."
-            if isinstance(error, sqlite3.Error)
-            else str(error)
-        )
+    except (ValueError, ConnectionError, sqlite3.Error) as error:
+        if isinstance(error, sqlite3.Error):
+            error_message = _DATABASE_ERROR_MESSAGE
+            status_code = 503
+        elif isinstance(error, ConnectionError):
+            error_message = str(error)
+            status_code = 503
+        else:
+            error_message = str(error)
+            status_code = 400
 
         return templates.TemplateResponse(
             request=request,
@@ -94,39 +72,37 @@ def search_movie_page(
             status_code=status_code,
         )
 
-@router.post("/movies/save")
+    return templates.TemplateResponse(
+        request=request,
+        name="search_results.html",
+        context={
+            "page_title": "Resultados da pesquisa",
+            "search": title,
+            "results": results,
+            "error": None,
+        },
+    )
+
+
+@router.post("/movies/save", name="save_movie_page")
 def save_movie_page(
     request: Request,
     imdb_id: str = Form(...),
-    service: MovieServices = Depends(
-        get_movie_service
-    ),
+    service: MovieServices = Depends(get_movie_service),
 ):
     try:
-        movie = service.search_api_by_imdb_id(
-            imdb_id
-        )
-
+        movie = service.search_api_by_imdb_id(imdb_id)
         service.save_movie(movie)
-
-        return RedirectResponse(
-            url=f"/movies/{movie.id}",
-            status_code=303,
-        )
-
-    except (
-        ValueError,
-        ConnectionError,
-        sqlite3.Error,
-    ) as error:
-        status_code = (
-            503
-            if isinstance(
-                error,
-                (ConnectionError, sqlite3.Error),
-            )
-            else 400
-        )
+    except (ValueError, ConnectionError, sqlite3.Error) as error:
+        if isinstance(error, sqlite3.Error):
+            error_message = _DATABASE_ERROR_MESSAGE
+            status_code = 503
+        elif isinstance(error, ConnectionError):
+            error_message = str(error)
+            status_code = 503
+        else:
+            error_message = str(error)
+            status_code = 400
 
         return templates.TemplateResponse(
             request=request,
@@ -134,27 +110,34 @@ def save_movie_page(
             context={
                 "page_title": "Detalhes do filme",
                 "movie": None,
-                "error": str(error),
+                "error": error_message,
             },
             status_code=status_code,
         )
 
-@router.post("/movies/{movie_id}/update-rating")
+    return RedirectResponse(
+        url=f"/movies/{movie.id}",
+        status_code=303,
+    )
+
+
+@router.post(
+    "/movies/{movie_id}/update-rating",
+    name="update_rating_page",
+)
 def update_rating_page(
     request: Request,
     movie_id: int,
     rating: int = Form(...),
-    title: str = Form(...),
-    service: MovieServices = Depends(get_movie_service)
+    service: MovieServices = Depends(get_movie_service),
 ):
     try:
         service.new_review_movie(movie_id, rating)
-
-    except (ValueError, ConnectionError) as error:
-        status_code = (503
-                       if isinstance(error, ConnectionError)
-                       else 400)
-        movie = service.search_movie_by_id(movie_id)
+    except ValueError as error:
+        try:
+            movie = service.search_movie_by_id(movie_id)
+        except sqlite3.Error:
+            movie = None
 
         return templates.TemplateResponse(
             request=request,
@@ -164,30 +147,43 @@ def update_rating_page(
                 "movie": movie,
                 "error": str(error),
             },
-            status_code=status_code,
+            status_code=400,
+        )
+    except sqlite3.Error:
+        return templates.TemplateResponse(
+            request=request,
+            name="details_data.html",
+            context={
+                "page_title": "Detalhes do filme",
+                "movie": None,
+                "error": _DATABASE_ERROR_MESSAGE,
+            },
+            status_code=503,
         )
 
     return RedirectResponse(
         url=f"/movies/{movie_id}",
         status_code=303,
-
     )
 
 
-@router.post("/movies/{movie_id}/update-comment")
+@router.post(
+    "/movies/{movie_id}/update-comment",
+    name="update_comment_page",
+)
 def update_comment_page(
     request: Request,
     movie_id: int,
     comment: str = Form(...),
-    service: MovieServices = Depends(get_movie_service)
+    service: MovieServices = Depends(get_movie_service),
 ):
     try:
         service.new_comment_movie(movie_id, comment)
-    except (ValueError, ConnectionError) as error:
-        status_code = (503
-                       if isinstance(error, ConnectionError)
-                       else 400)
-        movie = service.search_movie_by_id(movie_id)
+    except ValueError as error:
+        try:
+            movie = service.search_movie_by_id(movie_id)
+        except sqlite3.Error:
+            movie = None
 
         return templates.TemplateResponse(
             request=request,
@@ -197,7 +193,18 @@ def update_comment_page(
                 "movie": movie,
                 "error": str(error),
             },
-            status_code=status_code,
+            status_code=400,
+        )
+    except sqlite3.Error:
+        return templates.TemplateResponse(
+            request=request,
+            name="details_data.html",
+            context={
+                "page_title": "Detalhes do filme",
+                "movie": None,
+                "error": _DATABASE_ERROR_MESSAGE,
+            },
+            status_code=503,
         )
 
     return RedirectResponse(
@@ -206,43 +213,65 @@ def update_comment_page(
     )
 
 
-@router.post("/movies/{movie_id}/delete-movie", name="delete_movie_page")
+@router.post(
+    "/movies/{movie_id}/delete-movie",
+    name="delete_movie_page",
+)
 def delete_movie_page(
     request: Request,
     movie_id: int,
-    service: MovieServices = Depends(get_movie_service)
+    service: MovieServices = Depends(get_movie_service),
 ):
     try:
         service.delete_saved_movie(movie_id)
-
-    except (ValueError, ConnectionError) as error:
-        status_code = (503
-                       if isinstance(error, ConnectionError)
-                       else 400)
+    except ValueError as error:
         return templates.TemplateResponse(
             request=request,
             name="details_data.html",
             context={
-                "page_title": "Resultado da pesquisa",
+                "page_title": "Detalhes do filme",
                 "movie": None,
                 "error": str(error),
             },
-            status_code=status_code
+            status_code=400,
+        )
+    except sqlite3.Error:
+        return templates.TemplateResponse(
+            request=request,
+            name="details_data.html",
+            context={
+                "page_title": "Detalhes do filme",
+                "movie": None,
+                "error": _DATABASE_ERROR_MESSAGE,
+            },
+            status_code=503,
         )
 
-    return RedirectResponse(
-        url="/",
-        status_code=303,
-    )
+    return RedirectResponse(url="/", status_code=303)
 
 
-@router.get("/movies/{movie_id}", name="search_movie_id_page")
+@router.get(
+    "/movies/{movie_id}",
+    name="search_movie_id_page",
+)
 def movie_details_page(
     request: Request,
     movie_id: int,
-    service: MovieServices = Depends(get_movie_service)
+    service: MovieServices = Depends(get_movie_service),
 ):
-    movie = service.search_movie_by_id(movie_id)
+    try:
+        movie = service.search_movie_by_id(movie_id)
+    except sqlite3.Error:
+        return templates.TemplateResponse(
+            request=request,
+            name="details_data.html",
+            context={
+                "page_title": "Detalhes do filme",
+                "movie": None,
+                "error": _DATABASE_ERROR_MESSAGE,
+            },
+            status_code=503,
+        )
 
     if movie is None:
         return templates.TemplateResponse(
@@ -259,8 +288,13 @@ def movie_details_page(
     return templates.TemplateResponse(
         request=request,
         name="details_data.html",
-        context={"movie": movie, "page_title": "Detalhes do filme"},
+        context={
+            "movie": movie,
+            "page_title": "Detalhes do filme",
+            "error": None,
+        },
     )
+
 
 @router.get(
     "/omdb/{imdb_id}",
@@ -269,31 +303,12 @@ def movie_details_page(
 def omdb_details_page(
     request: Request,
     imdb_id: str,
-    service: MovieServices = Depends(
-        get_movie_service
-    ),
+    service: MovieServices = Depends(get_movie_service),
 ):
     try:
-        movie = service.search_api_by_imdb_id(
-            imdb_id
-        )
-
-        return templates.TemplateResponse(
-            request=request,
-            name="details_data.html",
-            context={
-                "page_title": "Detalhes do filme",
-                "movie": movie,
-                "error": None,
-            },
-        )
-
+        movie = service.search_api_by_imdb_id(imdb_id)
     except (ValueError, ConnectionError) as error:
-        status_code = (
-            503
-            if isinstance(error, ConnectionError)
-            else 404
-        )
+        status_code = 503 if isinstance(error, ConnectionError) else 404
 
         return templates.TemplateResponse(
             request=request,
@@ -305,3 +320,13 @@ def omdb_details_page(
             },
             status_code=status_code,
         )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="details_data.html",
+        context={
+            "page_title": "Detalhes do filme",
+            "movie": movie,
+            "error": None,
+        },
+    )

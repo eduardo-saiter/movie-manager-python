@@ -7,7 +7,7 @@ The project provides two interfaces over the same application logic:
 - a **local web application** built with FastAPI, Jinja2, HTML, and CSS;
 - a **command-line interface** for terminal use.
 
-When a title is searched, the application checks the local SQLite catalog first. If the movie is not saved, it queries the OMDb API and allows the result to be added to the catalog.
+When a title is searched, the application combines partial matches from the local SQLite catalog with the OMDb search results. Items already saved are identified by their IMDb ID and open the local detail page; external results open an OMDb detail page and can then be added to the catalog.
 
 The project was developed to practice object-oriented programming, layered architecture, external API consumption, SQLite persistence, validation, automated testing, and web development with Python.
 
@@ -15,8 +15,9 @@ The project was developed to practice object-oriented programming, layered archi
 
 ## ✨ Features
 
-- Search movies saved in the local catalog
-- Search the OMDb API when a movie is not found locally
+- Search partial movie titles in the local catalog
+- Combine local matches with OMDb search results
+- Detect OMDb results that are already saved and open their local record
 - Save API results in SQLite
 - Display movie posters
 - List saved movies in a responsive card grid
@@ -24,7 +25,7 @@ The project was developed to practice object-oriented programming, layered archi
 - Rate movies from 0 to 5 stars
 - Add and update personal comments
 - Delete movies from the catalog
-- Prevent duplicate titles with a database `UNIQUE` constraint
+- Prevent duplicate IMDb IDs with a case-insensitive database `UNIQUE` constraint
 - Validate empty searches, ratings, comments, and missing movie IDs
 - Display user-friendly error messages
 - Handle API timeouts, connection failures, and database errors
@@ -35,23 +36,20 @@ The project was developed to practice object-oriented programming, layered archi
 ## 🔎 Search flow
 
 ```text
-User searches for a title
-          │
-          ▼
-Search local SQLite database
-          │
-     ┌────┴────┐
-     │         │
-   Found    Not found
-     │         │
-     ▼         ▼
-Display     Search OMDb API
-movie           │
-                ▼
-          Display API result
-                │
-                ▼
-         Save to local catalog
+User searches for part of a title
+             │
+       ┌─────┴─────┐
+       ▼           ▼
+Local SQLite    OMDb search
+results         results
+       └─────┬─────┘
+             ▼
+Merge by IMDb ID and remove duplicates
+             │
+       ┌─────┴─────┐
+       ▼           ▼
+Saved item     External item
+/movies/{id}   /omdb/{imdb_id}
 ```
 
 ---
@@ -98,7 +96,8 @@ main.py ─────► MovieServices ─────► Repository / API cli
 | `repositories/movies_repository.py` | Performs SQLite CRUD operations |
 | `clients/movie_api_client.py` | Communicates with the OMDb API |
 | `database/database.py` | Creates the SQLite connection and initializes the schema |
-| `models/movie.py` | Defines the `Movie` dataclass |
+| `models/` | Defines `Media`, `Movie`, future series/episode models, search results, and external ratings |
+| `mappers/omdb_mapper.py` | Converts raw OMDb payloads into application models |
 | `templates/` | Contains the Jinja2 HTML pages |
 | `static/` | Contains the CSS styles |
 | `utils/exhibition.py` | Formats output for the terminal interface |
@@ -127,8 +126,13 @@ movie-manager-python/
 │   └── movie_api_client.py
 ├── database/
 │   └── database.py
+├── mappers/
+│   └── omdb_mapper.py
 ├── models/
-│   └── movie.py
+│   ├── media.py
+│   ├── movie.py
+│   ├── media_search_result.py
+│   └── external_rating.py
 ├── repositories/
 │   └── movies_repository.py
 ├── routers/
@@ -139,7 +143,8 @@ movie-manager-python/
 │   └── styles.css
 ├── templates/
 │   ├── index.html
-│   └── search_result.html
+│   ├── search_results.html
+│   └── details_data.html
 ├── tests/
 │   ├── conftest.py
 │   ├── test_database.py
@@ -281,7 +286,8 @@ The SQLite database is created automatically inside the `database/` directory.
 | Method | Route | Purpose |
 |---|---|---|
 | `GET` | `/` | Display the saved movie catalog |
-| `GET` | `/search?title=...` | Search locally and then through OMDb |
+| `GET` | `/search?title=...` | Combine partial local and OMDb search results |
+| `GET` | `/omdb/{imdb_id}` | Display complete details for an OMDb result |
 | `POST` | `/movies/save` | Save a movie returned by the API |
 | `GET` | `/movies/{movie_id}` | Display a saved movie by ID |
 | `POST` | `/movies/{movie_id}/update-rating` | Update a movie rating |
@@ -300,7 +306,7 @@ Examples:
 - ratings must be integers between 0 and 5;
 - comments cannot be empty or longer than 500 characters;
 - operations using an unknown movie ID are rejected;
-- duplicate movie titles are blocked by SQLite;
+- duplicate IMDb IDs are blocked by SQLite;
 - OMDb timeouts and connection errors are converted into user-friendly messages;
 - the web routes return appropriate HTTP status codes such as `400`, `404`, and `503`.
 
@@ -308,7 +314,7 @@ Examples:
 
 ## 🧪 Tests
 
-The project currently contains **70 automated test cases**.
+The project currently contains **123 automated test cases**.
 
 Run the full suite:
 
@@ -325,7 +331,7 @@ pytest --collect-only -q
 Current result:
 
 ```text
-70 passed
+123 passed
 ```
 
 The tests cover:
@@ -367,8 +373,8 @@ Mocks and an isolated in-memory SQLite database keep the test suite independent 
 ## 🗺️ Possible next steps
 
 - [x] Use FastAPI `Depends()` for dependency injection in the routers
-- [ ] Create a dedicated movie-detail template
-- [ ] Use the OMDb/IMDb identifier as the primary uniqueness rule
+- [x] Create a dedicated movie-detail template
+- [x] Use the OMDb/IMDb identifier as the primary uniqueness rule
 - [ ] Add database migrations
 - [ ] Improve accessibility and responsive styling
 - [ ] Add pagination and catalog filters
