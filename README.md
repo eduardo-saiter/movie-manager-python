@@ -11,7 +11,29 @@ The project provides two interfaces over the same application logic:
 
 When a title is searched, the application combines partial matches from the local SQLite catalog with the OMDb search results. Items already saved are identified by their IMDb ID and open the local detail page; external results open an OMDb detail page and can then be added to the catalog.
 
-The project was developed to practice object-oriented programming, layered architecture, external API consumption, SQLite persistence, validation, automated testing, and web development with Python.
+The project was developed to practice object-oriented programming, layered architecture, external API consumption, SQLite persistence, validation, automated testing, and web development 
+with Python.
+
+---
+
+## 📑 Contents
+
+- [Screenshots](#-screenshots)
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Technologies](#-technologies)
+- [Project structure](#-project-structure)
+- [Installation](#-installation)
+- [Environment variables](#-environment-variables)
+- [Running the application](#-running-the-application)
+  - [Web interface](#web-interface)
+  - [Command-line interface](#command-line-interface)
+- [Routes](#-routes)
+- [Tests](#-tests)
+- [Validations and error handling](#-validations-and-error-handling)
+- [Known limitations](#-known-limitations)
+- [Possible next steps](#️-possible-next-steps)
+- [License](#-license)
 
 ---
 
